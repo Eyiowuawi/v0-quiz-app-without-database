@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState, User } from '@/lib/redis'
-import { quizQuestions } from '@/lib/quiz-data'
+import { quizQuestions, Question } from '@/lib/quiz-data'
 
 interface StoredAnswer {
   email: string
@@ -8,6 +8,12 @@ interface StoredAnswer {
   selectedOption: number
   isCorrect: boolean
   answeredAt: number
+}
+
+// Helper to get questions (custom or default)
+async function getQuestions(): Promise<Question[]> {
+  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS)
+  return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
 }
 
 export async function GET(request: NextRequest) {
@@ -18,6 +24,7 @@ export async function GET(request: NextRequest) {
     // Check if quiz results are being shown
     const state = await redis.get<QuizState>(KEYS.QUIZ_STATE)
     const showResults = state?.showResults === true
+    const questions = await getQuestions()
 
     if (email) {
       const normalizedEmail = email.toLowerCase().trim()
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
 
       // Get all user's answers from individual keys
       const userAnswers: StoredAnswer[] = []
-      for (let i = 0; i < quizQuestions.length; i++) {
+      for (let i = 0; i < questions.length; i++) {
         const answerKey = KEYS.USER_ANSWER(normalizedEmail, i)
         const answer = await redis.get<StoredAnswer>(answerKey)
         if (answer) {
@@ -50,14 +57,14 @@ export async function GET(request: NextRequest) {
         resultsAvailable: true,
         correctCount,
         totalAnswered,
-        totalQuestions: quizQuestions.length,
-        percentage: totalAnswered > 0 ? Math.round((correctCount / quizQuestions.length) * 100) : 0,
+        totalQuestions: questions.length,
+        percentage: totalAnswered > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
         answers: userAnswers.map(a => ({
           questionIndex: a.questionIndex,
-          question: quizQuestions[a.questionIndex]?.question,
-          options: quizQuestions[a.questionIndex]?.options,
+          question: questions[a.questionIndex]?.question,
+          options: questions[a.questionIndex]?.options,
           selectedOption: a.selectedOption,
-          correctOption: quizQuestions[a.questionIndex]?.correctOption,
+          correctOption: questions[a.questionIndex]?.correctOption,
           isCorrect: a.isCorrect,
         }))
       })
@@ -74,14 +81,14 @@ export async function GET(request: NextRequest) {
         email: user.email,
         correctCount,
         totalAnswered: userAnswers.length,
-        percentage: quizQuestions.length > 0 ? Math.round((correctCount / quizQuestions.length) * 100) : 0,
+        percentage: questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
       }
     }).sort((a, b) => b.correctCount - a.correctCount || b.percentage - a.percentage)
 
     return NextResponse.json({
       leaderboard,
       totalParticipants: users.length,
-      totalQuestions: quizQuestions.length,
+      totalQuestions: questions.length,
       showResults,
     })
   } catch (error) {

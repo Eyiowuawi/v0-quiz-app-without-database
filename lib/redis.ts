@@ -10,6 +10,7 @@ export const KEYS = {
   QUIZ_STATE: 'quiz:state',
   USERS: 'quiz:users',
   ANSWERS: 'quiz:answers',
+  CUSTOM_QUESTIONS: 'quiz:custom_questions',
   USER_SESSION: (email: string) => `quiz:session:${email}`,
   USER_ANSWER: (email: string, questionIndex: number) => `quiz:answer:${email}:${questionIndex}`,
 }

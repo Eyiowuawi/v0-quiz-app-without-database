@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState } from '@/lib/redis'
-import { quizQuestions } from '@/lib/quiz-data'
+import { quizQuestions, Question } from '@/lib/quiz-data'
 
 interface StoredAnswer {
   email: string
@@ -8,6 +8,12 @@ interface StoredAnswer {
   selectedOption: number
   isCorrect: boolean
   answeredAt: number
+}
+
+// Helper to get questions (custom or default)
+async function getQuestions(): Promise<Question[]> {
+  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS)
+  return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
 }
 
 export async function POST(request: NextRequest) {
@@ -19,6 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim()
+    const questions = await getQuestions()
 
     // Verify quiz is active and on this question
     const state = await redis.get<QuizState>(KEYS.QUIZ_STATE)
@@ -27,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if question exists
-    const question = quizQuestions[questionIndex]
+    const question = questions[questionIndex]
     if (!question) {
       return NextResponse.json({ error: 'Invalid question' }, { status: 400 })
     }
@@ -77,6 +84,7 @@ export async function GET(request: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim()
+    const questions = await getQuestions()
 
     // If specific question requested, return just that answer
     if (questionIndexParam !== null) {
@@ -99,7 +107,7 @@ export async function GET(request: NextRequest) {
     // Return all user's answers (just the selections, no correct/incorrect info)
     const userAnswers: { questionIndex: number; selectedOption: number }[] = []
     
-    for (let i = 0; i < quizQuestions.length; i++) {
+    for (let i = 0; i < questions.length; i++) {
       const answerKey = KEYS.USER_ANSWER(normalizedEmail, i)
       const answer = await redis.get<StoredAnswer>(answerKey)
       if (answer) {
