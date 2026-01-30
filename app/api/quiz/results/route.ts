@@ -74,16 +74,34 @@ export async function GET(request: NextRequest) {
     const users = await redis.get<User[]>(KEYS.USERS) || []
     const allAnswers = await redis.get<StoredAnswer[]>(KEYS.ANSWERS) || []
 
-    const leaderboard = users.map(user => {
-      const userAnswers = allAnswers.filter(a => a.email === user.email)
-      const correctCount = userAnswers.filter(a => a.isCorrect).length
-      return {
-        email: user.email,
-        correctCount,
-        totalAnswered: userAnswers.length,
-        percentage: questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
-      }
-    }).sort((a, b) => b.correctCount - a.correctCount || b.percentage - a.percentage)
+    // Build leaderboard by getting answers for each user
+    // Use individual answer keys as the source of truth for accuracy
+    const leaderboard = await Promise.all(
+      users.map(async (user) => {
+        const normalizedEmail = user.email.toLowerCase().trim()
+        const userAnswers: StoredAnswer[] = []
+        
+        // Get all answers for this user from individual keys
+        for (let i = 0; i < questions.length; i++) {
+          const answerKey = KEYS.USER_ANSWER(normalizedEmail, i)
+          const answer = await redis.get<StoredAnswer>(answerKey)
+          if (answer) {
+            userAnswers.push(answer)
+          }
+        }
+        
+        const correctCount = userAnswers.filter(a => a.isCorrect).length
+        return {
+          email: user.email,
+          correctCount,
+          totalAnswered: userAnswers.length,
+          percentage: questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
+        }
+      })
+    )
+
+    // Sort by correct count (descending), then by percentage (descending)
+    leaderboard.sort((a, b) => b.correctCount - a.correctCount || b.percentage - a.percentage)
 
     return NextResponse.json({
       leaderboard,
