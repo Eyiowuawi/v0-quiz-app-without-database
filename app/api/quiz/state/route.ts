@@ -12,6 +12,8 @@ export async function GET() {
         currentQuestionIndex: -1, // -1 means quiz hasn't started
         isActive: false,
         showResults: false,
+        timerMode: false,
+        timerDuration: 30,
       }
       await redis.set(KEYS.QUIZ_STATE, defaultState)
       return NextResponse.json({ 
@@ -23,13 +25,22 @@ export async function GET() {
 
     const currentQuestion = state.currentQuestionIndex >= 0 && state.currentQuestionIndex < quizQuestions.length
       ? {
-          ...quizQuestions[state.currentQuestionIndex],
-          correctOption: undefined, // Don't send correct answer to client
+          id: quizQuestions[state.currentQuestionIndex].id,
+          question: quizQuestions[state.currentQuestionIndex].question,
+          options: quizQuestions[state.currentQuestionIndex].options,
+          // Don't send correct answer to client
         }
       : null
 
     return NextResponse.json({ 
-      state, 
+      state: {
+        currentQuestionIndex: state.currentQuestionIndex,
+        isActive: state.isActive,
+        showResults: state.showResults,
+        timerMode: state.timerMode,
+        timerDuration: state.timerDuration,
+        questionStartTime: state.questionStartTime,
+      }, 
       totalQuestions: quizQuestions.length,
       currentQuestion 
     })

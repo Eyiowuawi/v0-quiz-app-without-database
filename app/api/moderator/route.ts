@@ -9,6 +9,14 @@ function verifyModerator(request: NextRequest): boolean {
   return authHeader === MODERATOR_KEY
 }
 
+const DEFAULT_STATE: QuizState = {
+  currentQuestionIndex: -1,
+  isActive: false,
+  showResults: false,
+  timerMode: false,
+  timerDuration: 30,
+}
+
 export async function GET(request: NextRequest) {
   if (!verifyModerator(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,7 +27,7 @@ export async function GET(request: NextRequest) {
     const users = await redis.get<User[]>(KEYS.USERS) || []
 
     return NextResponse.json({
-      state: state || { currentQuestionIndex: -1, isActive: false, showResults: false },
+      state: state || DEFAULT_STATE,
       questions: quizQuestions,
       participantCount: users.length,
       participants: users,
@@ -36,13 +44,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { action, questionIndex } = await request.json()
+    const { action, questionIndex, timerMode, timerDuration } = await request.json()
 
-    let state = await redis.get<QuizState>(KEYS.QUIZ_STATE) || {
-      currentQuestionIndex: -1,
-      isActive: false,
-      showResults: false,
-    }
+    let state = await redis.get<QuizState>(KEYS.QUIZ_STATE) || { ...DEFAULT_STATE }
 
     switch (action) {
       case 'start':
@@ -50,6 +54,9 @@ export async function POST(request: NextRequest) {
           currentQuestionIndex: 0,
           isActive: true,
           showResults: false,
+          timerMode: timerMode ?? state.timerMode ?? false,
+          timerDuration: timerDuration ?? state.timerDuration ?? 30,
+          questionStartTime: Date.now(),
         }
         break
 
@@ -57,6 +64,7 @@ export async function POST(request: NextRequest) {
         if (state.currentQuestionIndex < quizQuestions.length - 1) {
           state.currentQuestionIndex++
           state.isActive = true
+          state.questionStartTime = Date.now()
         } else {
           state.isActive = false
           state.showResults = true
@@ -67,6 +75,7 @@ export async function POST(request: NextRequest) {
         if (state.currentQuestionIndex > 0) {
           state.currentQuestionIndex--
           state.isActive = true
+          state.questionStartTime = Date.now()
         }
         break
 
@@ -75,6 +84,7 @@ export async function POST(request: NextRequest) {
           state.currentQuestionIndex = questionIndex
           state.isActive = true
           state.showResults = false
+          state.questionStartTime = Date.now()
         }
         break
 
@@ -85,6 +95,7 @@ export async function POST(request: NextRequest) {
       case 'resume':
         state.isActive = true
         state.showResults = false
+        state.questionStartTime = Date.now()
         break
 
       case 'showResults':
@@ -92,14 +103,22 @@ export async function POST(request: NextRequest) {
         state.showResults = true
         break
 
+      case 'setTimerMode':
+        state.timerMode = timerMode ?? false
+        state.timerDuration = timerDuration ?? 30
+        break
+
       case 'reset':
-        state = {
-          currentQuestionIndex: -1,
-          isActive: false,
-          showResults: false,
-        }
-        // Also clear answers
+        state = { ...DEFAULT_STATE }
+        // Clear main answers array
         await redis.set(KEYS.ANSWERS, [])
+        // Clear individual user answer keys
+        const users = await redis.get<User[]>(KEYS.USERS) || []
+        for (const user of users) {
+          for (let i = 0; i < quizQuestions.length; i++) {
+            await redis.del(KEYS.USER_ANSWER(user.email, i))
+          }
+        }
         break
 
       default:

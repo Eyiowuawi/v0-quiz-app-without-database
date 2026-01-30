@@ -11,19 +11,22 @@ interface QuizState {
   currentQuestionIndex: number
   isActive: boolean
   showResults: boolean
+  timerMode?: boolean
+  timerDuration?: number
+  questionStartTime?: number
 }
 
 interface UserAnswer {
   questionIndex: number
   selectedOption: number
-  isCorrect: boolean
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function QuizClient() {
   const [email, setEmail] = useState<string | null>(null)
-  const [userAnswers, setUserAnswers] = useState<Map<number, UserAnswer>>(new Map())
+  const [userAnswers, setUserAnswers] = useState<Map<number, number>>(new Map())
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
 
   // Check for existing session on mount
   useEffect(() => {
@@ -41,33 +44,50 @@ export function QuizClient() {
   )
 
   // Fetch user's previous answers
-  const { data: answersData } = useSWR(
+  const { data: answersData, mutate: mutateAnswers } = useSWR(
     email ? `/api/quiz/answer?email=${encodeURIComponent(email)}` : null,
-    fetcher
+    fetcher,
+    { refreshInterval: 3000 }
   )
 
   // Update userAnswers when we get data from the server
   useEffect(() => {
     if (answersData?.answers) {
-      const answersMap = new Map<number, UserAnswer>()
+      const answersMap = new Map<number, number>()
       answersData.answers.forEach((answer: UserAnswer) => {
-        answersMap.set(answer.questionIndex, answer)
+        answersMap.set(answer.questionIndex, answer.selectedOption)
       })
       setUserAnswers(answersMap)
     }
   }, [answersData])
 
+  // Timer countdown
+  useEffect(() => {
+    const state = quizData?.state as QuizState | null
+    if (state?.timerMode && state?.questionStartTime && state?.timerDuration && state.isActive) {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - state.questionStartTime!) / 1000)
+        const remaining = Math.max(0, state.timerDuration! - elapsed)
+        setTimeRemaining(remaining)
+      }, 1000)
+      return () => clearInterval(interval)
+    } else {
+      setTimeRemaining(null)
+    }
+  }, [quizData?.state])
+
   const handleLogin = (userEmail: string) => {
     setEmail(userEmail)
   }
 
-  const handleAnswer = useCallback((questionIndex: number, isCorrect: boolean, selectedOption: number) => {
+  const handleAnswer = useCallback((questionIndex: number, selectedOption: number) => {
     setUserAnswers((prev) => {
       const newMap = new Map(prev)
-      newMap.set(questionIndex, { questionIndex, selectedOption, isCorrect })
+      newMap.set(questionIndex, selectedOption)
       return newMap
     })
-  }, [])
+    mutateAnswers()
+  }, [mutateAnswers])
 
   const handleLogout = () => {
     localStorage.removeItem("quiz-email")
@@ -122,19 +142,16 @@ export function QuizClient() {
       <div className="min-h-screen bg-background p-4 py-8 relative">
         <LogoutButton onLogout={handleLogout} />
         <QuestionCard
+          key={`question-${state.currentQuestionIndex}`}
           question={currentQuestion}
           questionIndex={state.currentQuestionIndex}
           totalQuestions={totalQuestions}
           email={email}
-          hasAnswered={!!previousAnswer}
-          previousAnswer={previousAnswer ? {
-            selectedOption: previousAnswer.selectedOption,
-            correctOption: currentQuestion.correctOption || 0,
-            isCorrect: previousAnswer.isCorrect
-          } : undefined}
-          onAnswer={(isCorrect, correctOption) =>
-            handleAnswer(state.currentQuestionIndex, isCorrect, correctOption)
+          previousAnswer={previousAnswer}
+          onAnswer={(selectedOption) =>
+            handleAnswer(state.currentQuestionIndex, selectedOption)
           }
+          timeRemaining={timeRemaining}
         />
       </div>
     )

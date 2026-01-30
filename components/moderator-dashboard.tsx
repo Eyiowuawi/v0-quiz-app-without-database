@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -66,6 +66,9 @@ interface QuizState {
   currentQuestionIndex: number
   isActive: boolean
   showResults: boolean
+  timerMode: boolean
+  timerDuration: number
+  questionStartTime?: number
 }
 
 interface Question {
@@ -116,6 +119,11 @@ export function ModeratorDashboard() {
     return null
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [timerMode, setTimerMode] = useState(false)
+  const [timerDuration, setTimerDuration] = useState(30)
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const autoAdvanceRef = useRef<NodeJS.Timeout | null>(null)
 
   const fetcher = moderatorKey ? createFetcher(moderatorKey) : null
 
@@ -131,7 +139,50 @@ export function ModeratorDashboard() {
     { refreshInterval: 5000 }
   )
 
-  const executeAction = useCallback(async (action: string, questionIndex?: number) => {
+  // Sync timer settings from server state
+  useEffect(() => {
+    if (data?.state) {
+      setTimerMode(data.state.timerMode ?? false)
+      setTimerDuration(data.state.timerDuration ?? 30)
+    }
+  }, [data?.state]) // Updated to use the entire data?.state object
+
+  // Timer countdown and auto-advance logic
+  useEffect(() => {
+    // Clear existing timers
+    if (timerRef.current) clearInterval(timerRef.current)
+    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current)
+
+    const state = data?.state
+    if (state?.timerMode && state?.questionStartTime && state?.timerDuration && state.isActive) {
+      // Update countdown every second
+      timerRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - state.questionStartTime!) / 1000)
+        const remaining = Math.max(0, state.timerDuration - elapsed)
+        setTimeRemaining(remaining)
+      }, 1000)
+
+      // Auto-advance when timer expires
+      const elapsed = Math.floor((Date.now() - state.questionStartTime) / 1000)
+      const remaining = Math.max(0, state.timerDuration - elapsed)
+      
+      if (remaining > 0) {
+        autoAdvanceRef.current = setTimeout(async () => {
+          // Auto advance to next question
+          await executeAction("next")
+        }, remaining * 1000)
+      }
+    } else {
+      setTimeRemaining(null)
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current)
+    }
+  }, [data?.state?.questionStartTime, data?.state?.timerMode, data?.state?.isActive, data?.state?.timerDuration])
+
+  const executeAction = useCallback(async (action: string, questionIndex?: number, options?: { timerMode?: boolean, timerDuration?: number }) => {
     if (!moderatorKey) return
 
     setIsLoading(true)
@@ -142,7 +193,12 @@ export function ModeratorDashboard() {
           "Content-Type": "application/json",
           "x-moderator-key": moderatorKey,
         },
-        body: JSON.stringify({ action, questionIndex }),
+        body: JSON.stringify({ 
+          action, 
+          questionIndex,
+          timerMode: options?.timerMode,
+          timerDuration: options?.timerDuration,
+        }),
       })
       await mutate()
     } finally {
@@ -153,6 +209,20 @@ export function ModeratorDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("moderator-key")
     setModeratorKey(null)
+  }
+
+  const handleStartQuiz = () => {
+    executeAction("start", undefined, { timerMode, timerDuration })
+  }
+
+  const handleTimerModeChange = async (enabled: boolean) => {
+    setTimerMode(enabled)
+    await executeAction("setTimerMode", undefined, { timerMode: enabled, timerDuration })
+  }
+
+  const handleTimerDurationChange = async (duration: number) => {
+    setTimerDuration(duration)
+    await executeAction("setTimerMode", undefined, { timerMode, timerDuration: duration })
   }
 
   if (!moderatorKey) {
@@ -193,32 +263,108 @@ export function ModeratorDashboard() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Control Panel */}
           <div className="md:col-span-2 space-y-6">
+            {/* Timer Mode Settings */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Quiz Mode</h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="quizMode"
+                      checked={!timerMode}
+                      onChange={() => handleTimerModeChange(false)}
+                      className="w-4 h-4 text-primary"
+                      disabled={state.currentQuestionIndex !== -1}
+                    />
+                    <div>
+                      <span className="font-medium text-foreground">Manual Control</span>
+                      <p className="text-sm text-muted-foreground">Manually advance questions</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="quizMode"
+                      checked={timerMode}
+                      onChange={() => handleTimerModeChange(true)}
+                      className="w-4 h-4 text-primary"
+                      disabled={state.currentQuestionIndex !== -1}
+                    />
+                    <div>
+                      <span className="font-medium text-foreground">Auto Timer</span>
+                      <p className="text-sm text-muted-foreground">Auto-advance with countdown</p>
+                    </div>
+                  </label>
+                </div>
+
+                {timerMode && (
+                  <div className="ml-7 flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">Time per question:</span>
+                    <select
+                      value={timerDuration}
+                      onChange={(e) => handleTimerDurationChange(Number(e.target.value))}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground"
+                      disabled={state.currentQuestionIndex !== -1}
+                    >
+                      <option value={15}>15 seconds</option>
+                      <option value={30}>30 seconds</option>
+                      <option value={45}>45 seconds</option>
+                      <option value={60}>1 minute</option>
+                      <option value={90}>1.5 minutes</option>
+                      <option value={120}>2 minutes</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {state.currentQuestionIndex !== -1 && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Quiz mode cannot be changed while quiz is in progress. Reset to change.
+                </p>
+              )}
+            </div>
+
             {/* Status Card */}
             <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground">Quiz Status</h2>
-                <span
-                  className={cn(
-                    "px-3 py-1 rounded-full text-sm font-medium",
-                    state.isActive
-                      ? "bg-green-500/10 text-green-600"
-                      : state.showResults
-                        ? "bg-blue-500/10 text-blue-600"
-                        : "bg-yellow-500/10 text-yellow-600"
+                <div className="flex items-center gap-3">
+                  {timerMode && timeRemaining !== null && state.isActive && (
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-sm font-bold",
+                      timeRemaining <= 10 ? "bg-red-500/10 text-red-600" : "bg-blue-500/10 text-blue-600"
+                    )}>
+                      {timeRemaining}s
+                    </span>
                   )}
-                >
-                  {state.isActive ? "Active" : state.showResults ? "Results" : state.currentQuestionIndex === -1 ? "Not Started" : "Paused"}
-                </span>
+                  <span
+                    className={cn(
+                      "px-3 py-1 rounded-full text-sm font-medium",
+                      state.isActive
+                        ? "bg-green-500/10 text-green-600"
+                        : state.showResults
+                          ? "bg-blue-500/10 text-blue-600"
+                          : "bg-yellow-500/10 text-yellow-600"
+                    )}
+                  >
+                    {state.isActive ? "Active" : state.showResults ? "Results" : state.currentQuestionIndex === -1 ? "Not Started" : "Paused"}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {state.currentQuestionIndex === -1 ? (
                   <Button
-                    onClick={() => executeAction("start")}
+                    onClick={handleStartQuiz}
                     disabled={isLoading}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="col-span-2 md:col-span-4 bg-green-600 hover:bg-green-700 text-white"
                   >
-                    Start Quiz
+                    {timerMode ? `Start Quiz (${timerDuration}s per question)` : "Start Quiz (Manual)"}
                   </Button>
                 ) : (
                   <>
