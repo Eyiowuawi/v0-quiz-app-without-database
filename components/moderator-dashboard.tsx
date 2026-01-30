@@ -157,7 +157,7 @@ export function ModeratorDashboard() {
   )
 
   const { data: leaderboardData } = useSWR<LeaderboardData>(
-    moderatorKey ? "/api/quiz/results" : null,
+    moderatorKey ? "/api/quiz/results?moderator=true" : null,
     (url: string) => fetch(url).then(res => res.json()),
     { refreshInterval: 5000 }
   )
@@ -591,7 +591,7 @@ export function ModeratorDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-foreground">
-                          {entry.correctCount}/{entry.totalAnswered}
+                          {entry.correctCount}/{leaderboardData?.totalQuestions || entry.totalAnswered}
                         </p>
                         <p className="text-xs text-muted-foreground">{entry.percentage}%</p>
                       </div>
