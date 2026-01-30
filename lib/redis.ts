@@ -11,6 +11,7 @@ export const KEYS = {
   USERS: 'quiz:users',
   ANSWERS: 'quiz:answers',
   USER_SESSION: (email: string) => `quiz:session:${email}`,
+  USER_ANSWER: (email: string, questionIndex: number) => `quiz:answer:${email}:${questionIndex}`,
 }
 
 // Types
@@ -18,6 +19,9 @@ export interface QuizState {
   currentQuestionIndex: number
   isActive: boolean
   showResults: boolean
+  timerMode: boolean
+  timerDuration: number // seconds per question
+  questionStartTime?: number // timestamp when current question started
 }
 
 export interface User {

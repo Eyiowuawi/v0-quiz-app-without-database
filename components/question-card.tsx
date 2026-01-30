@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -13,13 +13,9 @@ interface QuestionCardProps {
   questionIndex: number
   totalQuestions: number
   email: string
-  hasAnswered: boolean
-  previousAnswer?: {
-    selectedOption: number
-    correctOption: number
-    isCorrect: boolean
-  }
-  onAnswer: (isCorrect: boolean, correctOption: number) => void
+  previousAnswer?: number // Just the selected option index, no correct answer info
+  onAnswer: (selectedOption: number) => void
+  timeRemaining?: number | null // For timer mode
 }
 
 export function QuestionCard({
@@ -27,16 +23,22 @@ export function QuestionCard({
   questionIndex,
   totalQuestions,
   email,
-  hasAnswered,
   previousAnswer,
   onAnswer,
+  timeRemaining,
 }: QuestionCardProps) {
-  const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  // Reset selected option when question changes
+  const [selectedOption, setSelectedOption] = useState<number | null>(
+    previousAnswer !== undefined ? previousAnswer : null
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [result, setResult] = useState<{
-    isCorrect: boolean
-    correctOption: number
-  } | null>(previousAnswer || null)
+  const [hasSubmitted, setHasSubmitted] = useState(previousAnswer !== undefined)
+
+  // Reset state when question changes
+  useEffect(() => {
+    setSelectedOption(previousAnswer !== undefined ? previousAnswer : null)
+    setHasSubmitted(previousAnswer !== undefined)
+  }, [questionIndex, previousAnswer])
 
   const handleSubmit = async () => {
     if (selectedOption === null) return
@@ -54,14 +56,9 @@ export function QuestionCard({
         }),
       })
 
-      const data = await res.json()
-
       if (res.ok) {
-        setResult({
-          isCorrect: data.isCorrect,
-          correctOption: data.correctOption,
-        })
-        onAnswer(data.isCorrect, data.correctOption)
+        setHasSubmitted(true)
+        onAnswer(selectedOption)
       }
     } catch (error) {
       console.error("Submit error:", error)
@@ -70,7 +67,9 @@ export function QuestionCard({
     }
   }
 
-  const showResult = result !== null || hasAnswered
+  const handleChangeAnswer = () => {
+    setHasSubmitted(false)
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -79,11 +78,21 @@ export function QuestionCard({
           <span className="text-sm font-medium text-muted-foreground">
             Question {questionIndex + 1} of {totalQuestions}
           </span>
-          <div className="h-2 flex-1 mx-4 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${((questionIndex + 1) / totalQuestions) * 100}%` }}
-            />
+          <div className="flex items-center gap-4">
+            {timeRemaining !== null && timeRemaining !== undefined && (
+              <span className={cn(
+                "text-sm font-bold px-3 py-1 rounded-full",
+                timeRemaining <= 10 ? "bg-red-500/10 text-red-600" : "bg-primary/10 text-primary"
+              )}>
+                {timeRemaining}s
+              </span>
+            )}
+            <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${((questionIndex + 1) / totalQuestions) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -93,48 +102,36 @@ export function QuestionCard({
 
         <div className="space-y-3">
           {question.options.map((option, index) => {
-            const isSelected = selectedOption === index || (previousAnswer && previousAnswer.selectedOption === index)
-            const isCorrectAnswer = result?.correctOption === index || previousAnswer?.correctOption === index
-            const wasWrongSelection = showResult && isSelected && !isCorrectAnswer
+            const isSelected = selectedOption === index
 
             return (
               <button
-                key={index}
-                onClick={() => !showResult && setSelectedOption(index)}
-                disabled={showResult || isSubmitting}
+                key={`${questionIndex}-${index}`}
+                onClick={() => !hasSubmitted && setSelectedOption(index)}
+                disabled={hasSubmitted || isSubmitting}
                 className={cn(
                   "w-full p-4 text-left rounded-lg border-2 transition-all duration-200",
-                  "hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
-                  !showResult && isSelected && "border-primary bg-primary/5",
-                  !showResult && !isSelected && "border-border bg-card",
-                  showResult && isCorrectAnswer && "border-green-500 bg-green-500/10 text-green-700",
-                  showResult && wasWrongSelection && "border-red-500 bg-red-500/10 text-red-700",
-                  showResult && !isCorrectAnswer && !wasWrongSelection && "border-border bg-muted/50 text-muted-foreground",
-                  (showResult || isSubmitting) && "cursor-not-allowed"
+                  "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                  !hasSubmitted && "hover:border-primary/50",
+                  isSelected && "border-primary bg-primary/5",
+                  !isSelected && "border-border bg-card",
+                  (hasSubmitted || isSubmitting) && "cursor-not-allowed opacity-70"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2",
-                      !showResult && isSelected && "border-primary bg-primary text-primary-foreground",
-                      !showResult && !isSelected && "border-muted-foreground/30 text-muted-foreground",
-                      showResult && isCorrectAnswer && "border-green-500 bg-green-500 text-white",
-                      showResult && wasWrongSelection && "border-red-500 bg-red-500 text-white",
-                      showResult && !isCorrectAnswer && !wasWrongSelection && "border-muted-foreground/30 text-muted-foreground"
+                      isSelected && "border-primary bg-primary text-primary-foreground",
+                      !isSelected && "border-muted-foreground/30 text-muted-foreground"
                     )}
                   >
                     {String.fromCharCode(65 + index)}
                   </span>
                   <span className="flex-1 font-medium">{option}</span>
-                  {showResult && isCorrectAnswer && (
-                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {hasSubmitted && isSelected && (
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  {showResult && wasWrongSelection && (
-                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   )}
                 </div>
@@ -143,7 +140,7 @@ export function QuestionCard({
           })}
         </div>
 
-        {!showResult && (
+        {!hasSubmitted ? (
           <Button
             onClick={handleSubmit}
             disabled={selectedOption === null || isSubmitting}
@@ -151,16 +148,18 @@ export function QuestionCard({
           >
             {isSubmitting ? "Submitting..." : "Submit Answer"}
           </Button>
-        )}
-
-        {showResult && (
-          <div
-            className={cn(
-              "mt-6 p-4 rounded-lg text-center font-medium",
-              (result?.isCorrect || previousAnswer?.isCorrect) ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"
-            )}
-          >
-            {(result?.isCorrect || previousAnswer?.isCorrect) ? "Correct! Well done." : "Incorrect. Better luck next time!"}
+        ) : (
+          <div className="mt-6 space-y-3">
+            <div className="p-4 rounded-lg bg-primary/10 text-primary text-center font-medium">
+              Answer submitted! Waiting for next question...
+            </div>
+            <Button
+              onClick={handleChangeAnswer}
+              variant="outline"
+              className="w-full bg-transparent"
+            >
+              Change Answer
+            </Button>
           </div>
         )}
       </div>
