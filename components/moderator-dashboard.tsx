@@ -111,6 +111,20 @@ const createFetcher = (key: string) => async (url: string) => {
   return res.json()
 }
 
+// Question template for JSON upload
+const QUESTION_TEMPLATE = `[
+  {
+    "question": "What is the capital of France?",
+    "options": ["London", "Berlin", "Paris", "Madrid"],
+    "correctOption": 2
+  },
+  {
+    "question": "Which planet is the Red Planet?",
+    "options": ["Venus", "Mars", "Jupiter", "Saturn"],
+    "correctOption": 1
+  }
+]`
+
 export function ModeratorDashboard() {
   const [moderatorKey, setModeratorKey] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
@@ -124,6 +138,15 @@ export function ModeratorDashboard() {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const autoAdvanceRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Question upload state
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [questionsJson, setQuestionsJson] = useState("")
+  const [uploadError, setUploadError] = useState("")
+  const [uploadSuccess, setUploadSuccess] = useState("")
+  
+  // Clear database confirmation
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   const fetcher = moderatorKey ? createFetcher(moderatorKey) : null
 
@@ -145,30 +168,26 @@ export function ModeratorDashboard() {
       setTimerMode(data.state.timerMode ?? false)
       setTimerDuration(data.state.timerDuration ?? 30)
     }
-  }, [data?.state]) // Updated to use the entire data?.state object
+  }, [data?.state])
 
   // Timer countdown and auto-advance logic
   useEffect(() => {
-    // Clear existing timers
     if (timerRef.current) clearInterval(timerRef.current)
     if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current)
 
     const state = data?.state
     if (state?.timerMode && state?.questionStartTime && state?.timerDuration && state.isActive) {
-      // Update countdown every second
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - state.questionStartTime!) / 1000)
         const remaining = Math.max(0, state.timerDuration - elapsed)
         setTimeRemaining(remaining)
       }, 1000)
 
-      // Auto-advance when timer expires
       const elapsed = Math.floor((Date.now() - state.questionStartTime) / 1000)
       const remaining = Math.max(0, state.timerDuration - elapsed)
       
       if (remaining > 0) {
         autoAdvanceRef.current = setTimeout(async () => {
-          // Auto advance to next question
           await executeAction("next")
         }, remaining * 1000)
       }
@@ -182,12 +201,12 @@ export function ModeratorDashboard() {
     }
   }, [data?.state?.questionStartTime, data?.state?.timerMode, data?.state?.isActive, data?.state?.timerDuration])
 
-  const executeAction = useCallback(async (action: string, questionIndex?: number, options?: { timerMode?: boolean, timerDuration?: number }) => {
+  const executeAction = useCallback(async (action: string, questionIndex?: number, options?: { timerMode?: boolean, timerDuration?: number, questions?: Question[] }) => {
     if (!moderatorKey) return
 
     setIsLoading(true)
     try {
-      await fetch("/api/moderator", {
+      const res = await fetch("/api/moderator", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -198,9 +217,15 @@ export function ModeratorDashboard() {
           questionIndex,
           timerMode: options?.timerMode,
           timerDuration: options?.timerDuration,
+          questions: options?.questions,
         }),
       })
+      const result = await res.json()
+      if (!res.ok) {
+        throw new Error(result.error || 'Action failed')
+      }
       await mutate()
+      return result
     } finally {
       setIsLoading(false)
     }
@@ -223,6 +248,42 @@ export function ModeratorDashboard() {
   const handleTimerDurationChange = async (duration: number) => {
     setTimerDuration(duration)
     await executeAction("setTimerMode", undefined, { timerMode, timerDuration: duration })
+  }
+
+  const handleUploadQuestions = async () => {
+    setUploadError("")
+    setUploadSuccess("")
+    
+    try {
+      const parsedQuestions = JSON.parse(questionsJson)
+      const result = await executeAction("uploadQuestions", undefined, { questions: parsedQuestions })
+      if (result?.success) {
+        setUploadSuccess(result.message || "Questions uploaded successfully!")
+        setQuestionsJson("")
+        setTimeout(() => {
+          setShowUploadModal(false)
+          setUploadSuccess("")
+        }, 2000)
+      }
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        setUploadError("Invalid JSON format. Please check your syntax.")
+      } else if (err instanceof Error) {
+        setUploadError(err.message)
+      } else {
+        setUploadError("Failed to upload questions")
+      }
+    }
+  }
+
+  const handleResetQuestions = async () => {
+    await executeAction("resetQuestions")
+    setShowUploadModal(false)
+  }
+
+  const handleClearDatabase = async () => {
+    await executeAction("clearDatabase")
+    setShowClearConfirm(false)
   }
 
   if (!moderatorKey) {
@@ -263,6 +324,28 @@ export function ModeratorDashboard() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Control Panel */}
           <div className="md:col-span-2 space-y-6">
+            {/* Questions Management */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Questions ({questions.length})</h2>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowUploadModal(true)}
+                    variant="outline"
+                    size="sm"
+                    disabled={state.currentQuestionIndex !== -1}
+                  >
+                    Upload Questions
+                  </Button>
+                </div>
+              </div>
+              {state.currentQuestionIndex !== -1 && (
+                <p className="text-sm text-muted-foreground">
+                  Cannot change questions while quiz is in progress. Reset to modify.
+                </p>
+              )}
+            </div>
+
             {/* Timer Mode Settings */}
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">Quiz Mode</h2>
@@ -400,7 +483,7 @@ export function ModeratorDashboard() {
                 )}
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
                 <Button
                   onClick={() => executeAction("reset")}
                   disabled={isLoading}
@@ -408,6 +491,14 @@ export function ModeratorDashboard() {
                   className="text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
                   Reset Quiz
+                </Button>
+                <Button
+                  onClick={() => setShowClearConfirm(true)}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  Clear Database
                 </Button>
               </div>
             </div>
@@ -539,6 +630,132 @@ export function ModeratorDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Upload Questions Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-foreground">Upload Questions</h2>
+              <button
+                onClick={() => {
+                  setShowUploadModal(false)
+                  setUploadError("")
+                  setUploadSuccess("")
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground mb-2">
+                Paste your questions in JSON format. Each question needs:
+              </p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside mb-4">
+                <li><code className="bg-muted px-1 rounded">question</code> - The question text</li>
+                <li><code className="bg-muted px-1 rounded">options</code> - Array of answer choices (2-6 options)</li>
+                <li><code className="bg-muted px-1 rounded">correctOption</code> - Index of correct answer (0-based)</li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Template Example:
+              </label>
+              <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
+                {QUESTION_TEMPLATE}
+              </pre>
+              <Button
+                onClick={() => setQuestionsJson(QUESTION_TEMPLATE)}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                Use Template
+              </Button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Your Questions JSON:
+              </label>
+              <textarea
+                value={questionsJson}
+                onChange={(e) => setQuestionsJson(e.target.value)}
+                className="w-full h-64 px-4 py-3 rounded-lg border border-input bg-background text-foreground font-mono text-sm"
+                placeholder="Paste your JSON here..."
+              />
+            </div>
+
+            {uploadError && (
+              <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                {uploadError}
+              </div>
+            )}
+
+            {uploadSuccess && (
+              <div className="mb-4 p-3 rounded-lg bg-green-500/10 text-green-600 text-sm">
+                {uploadSuccess}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={handleUploadQuestions}
+                disabled={isLoading || !questionsJson.trim()}
+                className="bg-primary hover:bg-primary/90"
+              >
+                Upload Questions
+              </Button>
+              <Button
+                onClick={handleResetQuestions}
+                disabled={isLoading}
+                variant="outline"
+              >
+                Reset to Default
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Database Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-foreground mb-4">Clear Database?</h2>
+            <p className="text-muted-foreground mb-6">
+              This will permanently delete ALL data including:
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc list-inside mb-6">
+              <li>All participant accounts and sessions</li>
+              <li>All quiz answers and scores</li>
+              <li>Quiz state and progress</li>
+              <li>Custom uploaded questions</li>
+            </ul>
+            <p className="text-destructive font-medium mb-6">
+              This action cannot be undone!
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={handleClearDatabase}
+                disabled={isLoading}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                Yes, Clear Everything
+              </Button>
+              <Button
+                onClick={() => setShowClearConfirm(false)}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

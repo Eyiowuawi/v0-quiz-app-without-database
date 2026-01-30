@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { redis, KEYS, QuizState } from '@/lib/redis'
-import { quizQuestions } from '@/lib/quiz-data'
+import { quizQuestions, Question } from '@/lib/quiz-data'
+
+// Helper to get questions (custom or default)
+async function getQuestions(): Promise<Question[]> {
+  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS)
+  return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
+}
 
 export async function GET() {
   try {
     const state = await redis.get<QuizState>(KEYS.QUIZ_STATE)
+    const questions = await getQuestions()
     
     if (!state) {
       // Initialize default state
@@ -18,16 +25,16 @@ export async function GET() {
       await redis.set(KEYS.QUIZ_STATE, defaultState)
       return NextResponse.json({ 
         state: defaultState, 
-        totalQuestions: quizQuestions.length,
+        totalQuestions: questions.length,
         currentQuestion: null 
       })
     }
 
-    const currentQuestion = state.currentQuestionIndex >= 0 && state.currentQuestionIndex < quizQuestions.length
+    const currentQuestion = state.currentQuestionIndex >= 0 && state.currentQuestionIndex < questions.length
       ? {
-          id: quizQuestions[state.currentQuestionIndex].id,
-          question: quizQuestions[state.currentQuestionIndex].question,
-          options: quizQuestions[state.currentQuestionIndex].options,
+          id: questions[state.currentQuestionIndex].id,
+          question: questions[state.currentQuestionIndex].question,
+          options: questions[state.currentQuestionIndex].options,
           // Don't send correct answer to client
         }
       : null
@@ -41,7 +48,7 @@ export async function GET() {
         timerDuration: state.timerDuration,
         questionStartTime: state.questionStartTime,
       }, 
-      totalQuestions: quizQuestions.length,
+      totalQuestions: questions.length,
       currentQuestion 
     })
   } catch (error) {
