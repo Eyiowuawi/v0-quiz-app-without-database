@@ -1,43 +1,47 @@
-"use client"
+"use client";
 
-import React from "react"
+import React from "react";
 
-import { useState, useCallback, useEffect, useRef } from "react"
-import useSWR from "swr"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useState, useCallback, useEffect, useRef } from "react";
+import useSWR from "swr";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ModeratorLoginProps {
-  onLogin: (key: string) => void
+  onLogin: (key: string) => void;
 }
 
 function ModeratorLogin({ onLogin }: ModeratorLoginProps) {
-  const [key, setKey] = useState("")
-  const [error, setError] = useState("")
+  const [key, setKey] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     const res = await fetch("/api/moderator", {
       headers: { "x-moderator-key": key },
-    })
+    });
 
     if (res.ok) {
-      localStorage.setItem("moderator-key", key)
-      onLogin(key)
+      localStorage.setItem("moderator-key", key);
+      onLogin(key);
     } else {
-      setError("Invalid moderator key")
+      setError("Invalid moderator key");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Moderator Access</h1>
-            <p className="text-muted-foreground">Enter the moderator key to continue</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Moderator Access
+            </h1>
+            <p className="text-muted-foreground">
+              Enter the moderator key to continue
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -48,7 +52,9 @@ function ModeratorLogin({ onLogin }: ModeratorLoginProps) {
               onChange={(e) => setKey(e.target.value)}
               className="w-full h-12 px-4 rounded-lg border border-input bg-background text-foreground"
             />
-            {error && <p className="text-destructive text-sm text-center">{error}</p>}
+            {error && (
+              <p className="text-destructive text-sm text-center">{error}</p>
+            )}
             <Button type="submit" className="w-full h-12">
               Login
             </Button>
@@ -59,57 +65,57 @@ function ModeratorLogin({ onLogin }: ModeratorLoginProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 interface QuizState {
-  currentQuestionIndex: number
-  isActive: boolean
-  showResults: boolean
-  timerMode: boolean
-  timerDuration: number
-  questionStartTime?: number
+  currentQuestionIndex: number;
+  isActive: boolean;
+  showResults: boolean;
+  timerMode: boolean;
+  timerDuration: number;
+  questionStartTime?: number;
 }
 
 interface Question {
-  id: number
-  question: string
-  options: string[]
-  correctOption: number
+  id: number;
+  question: string;
+  options: string[];
+  correctOption: number;
 }
 
 interface Participant {
-  email: string
-  joinedAt: number
+  email: string;
+  joinedAt: number;
 }
 
 interface ModeratorData {
-  state: QuizState
-  questions: Question[]
-  participantCount: number
-  participants: Participant[]
+  state: QuizState;
+  questions: Question[];
+  participantCount: number;
+  participants: Participant[];
 }
 
 interface LeaderboardEntry {
-  email: string
-  correctCount: number
-  totalAnswered: number
-  percentage: number
+  email: string;
+  correctCount: number;
+  totalAnswered: number;
+  percentage: number;
 }
 
 interface LeaderboardData {
-  leaderboard: LeaderboardEntry[]
-  totalParticipants: number
-  totalQuestions: number
+  leaderboard: LeaderboardEntry[];
+  totalParticipants: number;
+  totalQuestions: number;
 }
 
 const createFetcher = (key: string) => async (url: string) => {
   const res = await fetch(url, {
     headers: { "x-moderator-key": key },
-  })
-  if (!res.ok) throw new Error("Failed to fetch")
-  return res.json()
-}
+  });
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+};
 
 // Question template for JSON upload
 const QUESTION_TEMPLATE = `[
@@ -123,171 +129,205 @@ const QUESTION_TEMPLATE = `[
     "options": ["Venus", "Mars", "Jupiter", "Saturn"],
     "correctOption": 1
   }
-]`
+]`;
 
 export function ModeratorDashboard() {
-  const [moderatorKey, setModeratorKey] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("moderator-key")
-    }
-    return null
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [timerMode, setTimerMode] = useState(false)
-  const [timerDuration, setTimerDuration] = useState(30)
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const autoAdvanceRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // Question upload state
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [questionsJson, setQuestionsJson] = useState("")
-  const [uploadError, setUploadError] = useState("")
-  const [uploadSuccess, setUploadSuccess] = useState("")
-  
-  // Clear database confirmation
-  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [moderatorKey, setModeratorKey] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [timerMode, setTimerMode] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(30);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoAdvanceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetcher = moderatorKey ? createFetcher(moderatorKey) : null
+  // Question upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [questionsJson, setQuestionsJson] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [uploadSuccess, setUploadSuccess] = useState("");
+
+  // Clear database confirmation
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const fetcher = moderatorKey ? createFetcher(moderatorKey) : null;
 
   const { data, mutate } = useSWR<ModeratorData>(
     moderatorKey ? "/api/moderator" : null,
     fetcher,
-    { refreshInterval: 3000 }
-  )
+    { refreshInterval: 3000 },
+  );
 
   const { data: leaderboardData } = useSWR<LeaderboardData>(
     moderatorKey ? "/api/quiz/results?moderator=true" : null,
-    (url: string) => fetch(url).then(res => res.json()),
-    { refreshInterval: 5000 }
-  )
+    (url: string) => fetch(url).then((res) => res.json()),
+    { refreshInterval: 5000 },
+  );
+
+  // Load moderator key from localStorage on mount (client-side only)
+  useEffect(() => {
+    const savedKey = localStorage.getItem("moderator-key");
+    if (savedKey) {
+      setModeratorKey(savedKey);
+    }
+  }, []);
 
   // Sync timer settings from server state
   useEffect(() => {
     if (data?.state) {
-      setTimerMode(data.state.timerMode ?? false)
-      setTimerDuration(data.state.timerDuration ?? 30)
+      setTimerMode(data.state.timerMode ?? false);
+      setTimerDuration(data.state.timerDuration ?? 30);
     }
-  }, [data?.state])
+  }, [data?.state]);
 
   // Timer countdown and auto-advance logic
   useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current)
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
 
-    const state = data?.state
-    if (state?.timerMode && state?.questionStartTime && state?.timerDuration && state.isActive) {
+    const state = data?.state;
+    if (
+      state?.timerMode &&
+      state?.questionStartTime &&
+      state?.timerDuration &&
+      state.isActive
+    ) {
       timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - state.questionStartTime!) / 1000)
-        const remaining = Math.max(0, state.timerDuration - elapsed)
-        setTimeRemaining(remaining)
-      }, 1000)
+        const elapsed = Math.floor(
+          (Date.now() - state.questionStartTime!) / 1000,
+        );
+        const remaining = Math.max(0, state.timerDuration - elapsed);
+        setTimeRemaining(remaining);
+      }, 1000);
 
-      const elapsed = Math.floor((Date.now() - state.questionStartTime) / 1000)
-      const remaining = Math.max(0, state.timerDuration - elapsed)
-      
+      const elapsed = Math.floor((Date.now() - state.questionStartTime) / 1000);
+      const remaining = Math.max(0, state.timerDuration - elapsed);
+
       if (remaining > 0) {
         autoAdvanceRef.current = setTimeout(async () => {
-          await executeAction("next")
-        }, remaining * 1000)
+          await executeAction("next");
+        }, remaining * 1000);
       }
     } else {
-      setTimeRemaining(null)
+      setTimeRemaining(null);
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current)
-    }
-  }, [data?.state?.questionStartTime, data?.state?.timerMode, data?.state?.isActive, data?.state?.timerDuration])
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
+    };
+  }, [
+    data?.state?.questionStartTime,
+    data?.state?.timerMode,
+    data?.state?.isActive,
+    data?.state?.timerDuration,
+  ]);
 
-  const executeAction = useCallback(async (action: string, questionIndex?: number, options?: { timerMode?: boolean, timerDuration?: number, questions?: Question[] }) => {
-    if (!moderatorKey) return
+  const executeAction = useCallback(
+    async (
+      action: string,
+      questionIndex?: number,
+      options?: {
+        timerMode?: boolean;
+        timerDuration?: number;
+        questions?: Question[];
+      },
+    ) => {
+      if (!moderatorKey) return;
 
-    setIsLoading(true)
-    try {
-      const res = await fetch("/api/moderator", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-moderator-key": moderatorKey,
-        },
-        body: JSON.stringify({ 
-          action, 
-          questionIndex,
-          timerMode: options?.timerMode,
-          timerDuration: options?.timerDuration,
-          questions: options?.questions,
-        }),
-      })
-      const result = await res.json()
-      if (!res.ok) {
-        throw new Error(result.error || 'Action failed')
+      setIsLoading(true);
+      try {
+        const res = await fetch("/api/moderator", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-moderator-key": moderatorKey,
+          },
+          body: JSON.stringify({
+            action,
+            questionIndex,
+            timerMode: options?.timerMode,
+            timerDuration: options?.timerDuration,
+            questions: options?.questions,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.error || "Action failed");
+        }
+        await mutate();
+        return result;
+      } finally {
+        setIsLoading(false);
       }
-      await mutate()
-      return result
-    } finally {
-      setIsLoading(false)
-    }
-  }, [moderatorKey, mutate])
+    },
+    [moderatorKey, mutate],
+  );
 
   const handleLogout = () => {
-    localStorage.removeItem("moderator-key")
-    setModeratorKey(null)
-  }
+    localStorage.removeItem("moderator-key");
+    setModeratorKey(null);
+  };
 
   const handleStartQuiz = () => {
-    executeAction("start", undefined, { timerMode, timerDuration })
-  }
+    executeAction("start", undefined, { timerMode, timerDuration });
+  };
 
   const handleTimerModeChange = async (enabled: boolean) => {
-    setTimerMode(enabled)
-    await executeAction("setTimerMode", undefined, { timerMode: enabled, timerDuration })
-  }
+    setTimerMode(enabled);
+    await executeAction("setTimerMode", undefined, {
+      timerMode: enabled,
+      timerDuration,
+    });
+  };
 
   const handleTimerDurationChange = async (duration: number) => {
-    setTimerDuration(duration)
-    await executeAction("setTimerMode", undefined, { timerMode, timerDuration: duration })
-  }
+    setTimerDuration(duration);
+    await executeAction("setTimerMode", undefined, {
+      timerMode,
+      timerDuration: duration,
+    });
+  };
 
   const handleUploadQuestions = async () => {
-    setUploadError("")
-    setUploadSuccess("")
-    
+    setUploadError("");
+    setUploadSuccess("");
+
     try {
-      const parsedQuestions = JSON.parse(questionsJson)
-      const result = await executeAction("uploadQuestions", undefined, { questions: parsedQuestions })
+      const parsedQuestions = JSON.parse(questionsJson);
+      const result = await executeAction("uploadQuestions", undefined, {
+        questions: parsedQuestions,
+      });
       if (result?.success) {
-        setUploadSuccess(result.message || "Questions uploaded successfully!")
-        setQuestionsJson("")
+        setUploadSuccess(result.message || "Questions uploaded successfully!");
+        setQuestionsJson("");
         setTimeout(() => {
-          setShowUploadModal(false)
-          setUploadSuccess("")
-        }, 2000)
+          setShowUploadModal(false);
+          setUploadSuccess("");
+        }, 2000);
       }
     } catch (err) {
       if (err instanceof SyntaxError) {
-        setUploadError("Invalid JSON format. Please check your syntax.")
+        setUploadError("Invalid JSON format. Please check your syntax.");
       } else if (err instanceof Error) {
-        setUploadError(err.message)
+        setUploadError(err.message);
       } else {
-        setUploadError("Failed to upload questions")
+        setUploadError("Failed to upload questions");
       }
     }
-  }
+  };
 
   const handleResetQuestions = async () => {
-    await executeAction("resetQuestions")
-    setShowUploadModal(false)
-  }
+    await executeAction("resetQuestions");
+    setShowUploadModal(false);
+  };
 
   const handleClearDatabase = async () => {
-    await executeAction("clearDatabase")
-    setShowClearConfirm(false)
-  }
+    await executeAction("clearDatabase");
+    setShowClearConfirm(false);
+  };
 
   if (!moderatorKey) {
-    return <ModeratorLogin onLogin={setModeratorKey} />
+    return <ModeratorLogin onLogin={setModeratorKey} />;
   }
 
   if (!data) {
@@ -295,11 +335,14 @@ export function ModeratorDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
-    )
+    );
   }
 
-  const { state, questions, participantCount } = data
-  const currentQuestion = state.currentQuestionIndex >= 0 ? questions[state.currentQuestionIndex] : null
+  const { state, questions, participantCount } = data;
+  const currentQuestion =
+    state.currentQuestionIndex >= 0
+      ? questions[state.currentQuestionIndex]
+      : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -327,7 +370,9 @@ export function ModeratorDashboard() {
             {/* Questions Management */}
             <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">Questions ({questions.length})</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Questions ({questions.length})
+                </h2>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => setShowUploadModal(true)}
@@ -341,15 +386,18 @@ export function ModeratorDashboard() {
               </div>
               {state.currentQuestionIndex !== -1 && (
                 <p className="text-sm text-muted-foreground">
-                  Cannot change questions while quiz is in progress. Reset to modify.
+                  Cannot change questions while quiz is in progress. Reset to
+                  modify.
                 </p>
               )}
             </div>
 
             {/* Timer Mode Settings */}
             <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Quiz Mode</h2>
-              
+              <h2 className="text-lg font-semibold text-foreground mb-4">
+                Quiz Mode
+              </h2>
+
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -362,8 +410,12 @@ export function ModeratorDashboard() {
                       disabled={state.currentQuestionIndex !== -1}
                     />
                     <div>
-                      <span className="font-medium text-foreground">Manual Control</span>
-                      <p className="text-sm text-muted-foreground">Manually advance questions</p>
+                      <span className="font-medium text-foreground">
+                        Manual Control
+                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        Manually advance questions
+                      </p>
                     </div>
                   </label>
                 </div>
@@ -379,18 +431,26 @@ export function ModeratorDashboard() {
                       disabled={state.currentQuestionIndex !== -1}
                     />
                     <div>
-                      <span className="font-medium text-foreground">Auto Timer</span>
-                      <p className="text-sm text-muted-foreground">Auto-advance with countdown</p>
+                      <span className="font-medium text-foreground">
+                        Auto Timer
+                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        Auto-advance with countdown
+                      </p>
                     </div>
                   </label>
                 </div>
 
                 {timerMode && (
                   <div className="ml-7 flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">Time per question:</span>
+                    <span className="text-sm text-muted-foreground">
+                      Time per question:
+                    </span>
                     <select
                       value={timerDuration}
-                      onChange={(e) => handleTimerDurationChange(Number(e.target.value))}
+                      onChange={(e) =>
+                        handleTimerDurationChange(Number(e.target.value))
+                      }
                       className="px-3 py-2 rounded-lg border border-input bg-background text-foreground"
                       disabled={state.currentQuestionIndex !== -1}
                     >
@@ -407,7 +467,8 @@ export function ModeratorDashboard() {
 
               {state.currentQuestionIndex !== -1 && (
                 <p className="text-sm text-muted-foreground mt-4">
-                  Quiz mode cannot be changed while quiz is in progress. Reset to change.
+                  Quiz mode cannot be changed while quiz is in progress. Reset
+                  to change.
                 </p>
               )}
             </div>
@@ -415,13 +476,19 @@ export function ModeratorDashboard() {
             {/* Status Card */}
             <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">Quiz Status</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Quiz Status
+                </h2>
                 <div className="flex items-center gap-3">
                   {timerMode && timeRemaining !== null && state.isActive && (
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-sm font-bold",
-                      timeRemaining <= 10 ? "bg-red-500/10 text-red-600" : "bg-blue-500/10 text-blue-600"
-                    )}>
+                    <span
+                      className={cn(
+                        "px-3 py-1 rounded-full text-sm font-bold",
+                        timeRemaining <= 10
+                          ? "bg-red-500/10 text-red-600"
+                          : "bg-blue-500/10 text-blue-600",
+                      )}
+                    >
                       {timeRemaining}s
                     </span>
                   )}
@@ -431,11 +498,17 @@ export function ModeratorDashboard() {
                       state.isActive
                         ? "bg-green-500/10 text-green-600"
                         : state.showResults
-                          ? "bg-blue-500/10 text-blue-600"
-                          : "bg-yellow-500/10 text-yellow-600"
+                        ? "bg-blue-500/10 text-blue-600"
+                        : "bg-yellow-500/10 text-yellow-600",
                     )}
                   >
-                    {state.isActive ? "Active" : state.showResults ? "Results" : state.currentQuestionIndex === -1 ? "Not Started" : "Paused"}
+                    {state.isActive
+                      ? "Active"
+                      : state.showResults
+                      ? "Results"
+                      : state.currentQuestionIndex === -1
+                      ? "Not Started"
+                      : "Paused"}
                   </span>
                 </div>
               </div>
@@ -447,7 +520,9 @@ export function ModeratorDashboard() {
                     disabled={isLoading}
                     className="col-span-2 md:col-span-4 bg-green-600 hover:bg-green-700 text-white"
                   >
-                    {timerMode ? `Start Quiz (${timerDuration}s per question)` : "Start Quiz (Manual)"}
+                    {timerMode
+                      ? `Start Quiz (${timerDuration}s per question)`
+                      : "Start Quiz (Manual)"}
                   </Button>
                 ) : (
                   <>
@@ -463,10 +538,14 @@ export function ModeratorDashboard() {
                       disabled={isLoading}
                       className="bg-primary hover:bg-primary/90"
                     >
-                      {state.currentQuestionIndex >= questions.length - 1 ? "End Quiz" : "Next"}
+                      {state.currentQuestionIndex >= questions.length - 1
+                        ? "End Quiz"
+                        : "Next"}
                     </Button>
                     <Button
-                      onClick={() => executeAction(state.isActive ? "pause" : "resume")}
+                      onClick={() =>
+                        executeAction(state.isActive ? "pause" : "resume")
+                      }
                       disabled={isLoading}
                       variant="outline"
                     >
@@ -508,11 +587,14 @@ export function ModeratorDashboard() {
               <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-foreground">
-                    Question {state.currentQuestionIndex + 1} of {questions.length}
+                    Question {state.currentQuestionIndex + 1} of{" "}
+                    {questions.length}
                   </h2>
                 </div>
 
-                <p className="text-xl font-medium text-foreground mb-4">{currentQuestion.question}</p>
+                <p className="text-xl font-medium text-foreground mb-4">
+                  {currentQuestion.question}
+                </p>
 
                 <div className="space-y-2">
                   {currentQuestion.options.map((option, index) => (
@@ -522,13 +604,17 @@ export function ModeratorDashboard() {
                         "p-3 rounded-lg border",
                         index === currentQuestion.correctOption
                           ? "border-green-500 bg-green-500/10"
-                          : "border-border"
+                          : "border-border",
                       )}
                     >
-                      <span className="font-medium mr-2">{String.fromCharCode(65 + index)}.</span>
+                      <span className="font-medium mr-2">
+                        {String.fromCharCode(65 + index)}.
+                      </span>
                       {option}
                       {index === currentQuestion.correctOption && (
-                        <span className="ml-2 text-green-600 text-sm">(Correct)</span>
+                        <span className="ml-2 text-green-600 text-sm">
+                          (Correct)
+                        </span>
                       )}
                     </div>
                   ))}
@@ -538,7 +624,9 @@ export function ModeratorDashboard() {
 
             {/* Question Navigator */}
             <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Jump to Question</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">
+                Jump to Question
+              </h2>
               <div className="flex flex-wrap gap-2">
                 {questions.map((_, index) => (
                   <button
@@ -549,7 +637,7 @@ export function ModeratorDashboard() {
                       "w-10 h-10 rounded-lg font-medium text-sm transition-colors",
                       state.currentQuestionIndex === index
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted hover:bg-muted/80 text-foreground"
+                        : "bg-muted hover:bg-muted/80 text-foreground",
                     )}
                   >
                     {index + 1}
@@ -562,41 +650,50 @@ export function ModeratorDashboard() {
           {/* Leaderboard */}
           <div className="space-y-6">
             <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Leaderboard</h2>
-              {leaderboardData?.leaderboard && leaderboardData.leaderboard.length > 0 ? (
+              <h2 className="text-lg font-semibold text-foreground mb-4">
+                Leaderboard
+              </h2>
+              {leaderboardData?.leaderboard &&
+              leaderboardData.leaderboard.length > 0 ? (
                 <div className="space-y-3">
-                  {leaderboardData.leaderboard.slice(0, 10).map((entry, index) => (
-                    <div
-                      key={entry.email}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
-                    >
-                      <span
-                        className={cn(
-                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                          index === 0
-                            ? "bg-yellow-500 text-white"
-                            : index === 1
+                  {leaderboardData.leaderboard
+                    .slice(0, 10)
+                    .map((entry, index) => (
+                      <div
+                        key={entry.email}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                      >
+                        <span
+                          className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                            index === 0
+                              ? "bg-yellow-500 text-white"
+                              : index === 1
                               ? "bg-gray-400 text-white"
                               : index === 2
-                                ? "bg-amber-600 text-white"
-                                : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {entry.email}
-                        </p>
+                              ? "bg-amber-600 text-white"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {entry.email}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-foreground">
+                            {entry.correctCount}/
+                            {leaderboardData?.totalQuestions ||
+                              entry.totalAnswered}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {entry.percentage}%
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-foreground">
-                          {entry.correctCount}/{leaderboardData?.totalQuestions || entry.totalAnswered}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{entry.percentage}%</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm text-center py-4">
@@ -636,12 +733,14 @@ export function ModeratorDashboard() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-foreground">Upload Questions</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                Upload Questions
+              </h2>
               <button
                 onClick={() => {
-                  setShowUploadModal(false)
-                  setUploadError("")
-                  setUploadSuccess("")
+                  setShowUploadModal(false);
+                  setUploadError("");
+                  setUploadSuccess("");
                 }}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -654,9 +753,18 @@ export function ModeratorDashboard() {
                 Paste your questions in JSON format. Each question needs:
               </p>
               <ul className="text-sm text-muted-foreground list-disc list-inside mb-4">
-                <li><code className="bg-muted px-1 rounded">question</code> - The question text</li>
-                <li><code className="bg-muted px-1 rounded">options</code> - Array of answer choices (2-6 options)</li>
-                <li><code className="bg-muted px-1 rounded">correctOption</code> - Index of correct answer (0-based)</li>
+                <li>
+                  <code className="bg-muted px-1 rounded">question</code> - The
+                  question text
+                </li>
+                <li>
+                  <code className="bg-muted px-1 rounded">options</code> - Array
+                  of answer choices (2-6 options)
+                </li>
+                <li>
+                  <code className="bg-muted px-1 rounded">correctOption</code> -
+                  Index of correct answer (0-based)
+                </li>
               </ul>
             </div>
 
@@ -725,7 +833,9 @@ export function ModeratorDashboard() {
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-foreground mb-4">Clear Database?</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">
+              Clear Database?
+            </h2>
             <p className="text-muted-foreground mb-6">
               This will permanently delete ALL data including:
             </p>
@@ -757,5 +867,5 @@ export function ModeratorDashboard() {
         </div>
       )}
     </div>
-  )
+  );
 }
