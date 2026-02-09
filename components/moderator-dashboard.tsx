@@ -395,7 +395,7 @@ export function ModeratorDashboard() {
       <main className="max-w-6xl mx-auto px-4 py-6">
         {/* Team URL Display */}
         {teamId && (
-          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-xl p-6 mb-6">
+          <div className="bg-linear-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-xl p-6 mb-6">
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
