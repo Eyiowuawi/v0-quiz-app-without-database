@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 
 interface ScorecardProps {
   email: string
+  teamId?: string | null
 }
 
 interface ResultData {
@@ -19,17 +20,18 @@ interface ResultData {
     questionIndex: number
     question: string
     options: string[]
-    selectedOption: number
+    selectedOption: number | null
     correctOption: number
     isCorrect: boolean
+    answered: boolean
   }[]
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
-export function Scorecard({ email }: ScorecardProps) {
+export function Scorecard({ email, teamId }: ScorecardProps) {
   const { data, isLoading } = useSWR<ResultData>(
-    `/api/quiz/results?email=${encodeURIComponent(email)}`,
+    teamId ? `/api/quiz/results?email=${encodeURIComponent(email)}&teamId=${teamId}` : null,
     fetcher,
     { refreshInterval: 3000 }
   )
@@ -122,47 +124,76 @@ export function Scorecard({ email }: ScorecardProps) {
             {data.answers && data.answers.length > 0 ? (
               data.answers
                 .sort((a, b) => a.questionIndex - b.questionIndex)
-                .map((answer, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "p-4 rounded-lg border-2",
-                    answer.isCorrect ? "border-green-500/30 bg-green-500/5" : "border-red-500/30 bg-red-500/5"
-                  )}
-                >
-                  <div className="flex items-start gap-3">
+                .map((answer, index) => {
+                  const isUnanswered = !answer.answered
+                  
+                  return (
                     <div
+                      key={index}
                       className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5",
-                        answer.isCorrect ? "bg-green-500" : "bg-red-500"
+                        "p-4 rounded-lg border-2",
+                        answer.isCorrect && answer.answered
+                          ? "border-green-500/30 bg-green-500/5"
+                          : !answer.answered
+                          ? "border-gray-400/30 bg-gray-400/5"
+                          : "border-red-500/30 bg-red-500/5"
                       )}
                     >
-                      {answer.isCorrect ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5",
+                            answer.isCorrect && answer.answered
+                              ? "bg-green-500"
+                              : !answer.answered
+                              ? "bg-gray-400"
+                              : "bg-red-500"
+                          )}
+                        >
+                          {answer.isCorrect && answer.answered ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : !answer.answered ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm md:text-base mb-2">
+                            Q{answer.questionIndex + 1}: {answer.question}
+                          </p>
+                          {answer.answered ? (
+                            <>
+                              <p className="text-sm text-muted-foreground">
+                                Your answer: <span className="font-medium">{String.fromCharCode(65 + answer.selectedOption!)} - {answer.options?.[answer.selectedOption!]}</span>
+                              </p>
+                              {!answer.isCorrect && (
+                                <p className="text-sm text-green-600 mt-1">
+                                  Correct answer: <span className="font-medium">{String.fromCharCode(65 + answer.correctOption)} - {answer.options?.[answer.correctOption]}</span>
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm text-gray-600 font-medium mb-1">
+                                Not answered
+                              </p>
+                              <p className="text-sm text-green-600">
+                                Correct answer: <span className="font-medium">{String.fromCharCode(65 + answer.correctOption)} - {answer.options?.[answer.correctOption]}</span>
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm md:text-base mb-2">
-                        Q{answer.questionIndex + 1}: {answer.question}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Your answer: <span className="font-medium">{String.fromCharCode(65 + answer.selectedOption)} - {answer.options?.[answer.selectedOption]}</span>
-                      </p>
-                      {!answer.isCorrect && (
-                        <p className="text-sm text-green-600 mt-1">
-                          Correct answer: <span className="font-medium">{String.fromCharCode(65 + answer.correctOption)} - {answer.options?.[answer.correctOption]}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
+                  )
+                })
             ) : (
               <p className="text-muted-foreground text-center py-4">No answers recorded</p>
             )}

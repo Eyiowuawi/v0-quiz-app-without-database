@@ -1,17 +1,23 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState } from '@/lib/redis'
 import { quizQuestions, Question } from '@/lib/quiz-data'
 
 // Helper to get questions (custom or default)
-async function getQuestions(): Promise<Question[]> {
-  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS)
+async function getQuestions(teamId: string): Promise<Question[]> {
+  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS(teamId))
   return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE)
-    const questions = await getQuestions()
+    const teamId = request.nextUrl.searchParams.get('teamId')
+    
+    if (!teamId) {
+      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 })
+    }
+
+    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
+    const questions = await getQuestions(teamId)
     
     if (!state) {
       // Initialize default state
@@ -22,7 +28,7 @@ export async function GET() {
         timerMode: false,
         timerDuration: 30,
       }
-      await redis.set(KEYS.QUIZ_STATE, defaultState)
+      await redis.set(KEYS.QUIZ_STATE(teamId), defaultState)
       return NextResponse.json({ 
         state: defaultState, 
         totalQuestions: questions.length,

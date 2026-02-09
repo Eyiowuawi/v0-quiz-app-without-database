@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface QuestionCardProps {
   question: {
@@ -16,6 +17,7 @@ interface QuestionCardProps {
   previousAnswer?: number; // Just the selected option index, no correct answer info
   onAnswer: (selectedOption: number) => void;
   timeRemaining?: number | null; // For timer mode
+  teamId?: string | null;
 }
 
 export function QuestionCard({
@@ -26,6 +28,7 @@ export function QuestionCard({
   previousAnswer,
   onAnswer,
   timeRemaining,
+  teamId,
 }: QuestionCardProps) {
   // Reset selected option when question changes
   const [selectedOption, setSelectedOption] = useState<number | null>(
@@ -59,18 +62,23 @@ export function QuestionCard({
           email,
           questionIndex,
           selectedOption: optionIndex,
+          teamId,
         }),
       });
 
       if (res.ok) {
         setLastSubmittedOption(optionIndex);
         onAnswer(optionIndex);
+        toast.success("Answer submitted!");
       } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.error || "Failed to submit answer");
         // If submission failed, revert selection
         setSelectedOption(lastSubmittedOption);
       }
     } catch (error) {
       console.error("Submit error:", error);
+      toast.error("Network error. Please try again.");
       // If submission failed, revert selection
       setSelectedOption(lastSubmittedOption);
     } finally {

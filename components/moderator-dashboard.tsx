@@ -6,67 +6,10 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-interface ModeratorLoginProps {
-  onLogin: (key: string) => void;
-}
-
-function ModeratorLogin({ onLogin }: ModeratorLoginProps) {
-  const [key, setKey] = useState("");
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const res = await fetch("/api/moderator", {
-      headers: { "x-moderator-key": key },
-    });
-
-    if (res.ok) {
-      localStorage.setItem("moderator-key", key);
-      onLogin(key);
-    } else {
-      setError("Invalid moderator key");
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Moderator Access
-            </h1>
-            <p className="text-muted-foreground">
-              Enter the moderator key to continue
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="password"
-              placeholder="Moderator Key"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              className="w-full h-12 px-4 rounded-lg border border-input bg-background text-foreground"
-            />
-            {error && (
-              <p className="text-destructive text-sm text-center">{error}</p>
-            )}
-            <Button type="submit" className="w-full h-12">
-              Login
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            Default key: admin123
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { toast } from "sonner";
+import { ShareLink } from "@/components/share-link";
+import { ModeratorAuth } from "@/components/moderator-auth";
+import { Share2 } from "lucide-react";
 
 interface QuizState {
   currentQuestionIndex: number;
@@ -109,9 +52,9 @@ interface LeaderboardData {
   totalQuestions: number;
 }
 
-const createFetcher = (key: string) => async (url: string) => {
+const createFetcher = (sessionId: string) => async (url: string) => {
   const res = await fetch(url, {
-    headers: { "x-moderator-key": key },
+    headers: { "x-session-id": sessionId },
   });
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
@@ -132,7 +75,10 @@ const QUESTION_TEMPLATE = `[
 ]`;
 
 export function ModeratorDashboard() {
-  const [moderatorKey, setModeratorKey] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [moderatorEmail, setModeratorEmail] = useState<string | null>(null);
+  const [moderatorName, setModeratorName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [timerMode, setTimerMode] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
@@ -149,25 +95,59 @@ export function ModeratorDashboard() {
   // Clear database confirmation
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const fetcher = moderatorKey ? createFetcher(moderatorKey) : null;
+  const fetcher = sessionId ? createFetcher(sessionId) : null;
 
   const { data, mutate } = useSWR<ModeratorData>(
-    moderatorKey ? "/api/moderator" : null,
+    sessionId ? "/api/moderator" : null,
     fetcher,
     { refreshInterval: 3000 },
   );
 
   const { data: leaderboardData } = useSWR<LeaderboardData>(
-    moderatorKey ? "/api/quiz/results?moderator=true" : null,
-    (url: string) => fetch(url).then((res) => res.json()),
+    sessionId && teamId
+      ? `/api/quiz/results?moderator=true&teamId=${teamId}`
+      : null,
+    (url: string) =>
+      fetch(url, { headers: { "x-session-id": sessionId! } }).then((res) =>
+        res.json(),
+      ),
     { refreshInterval: 5000 },
   );
 
-  // Load moderator key from localStorage on mount (client-side only)
+  // Load session from localStorage on mount (client-side only)
   useEffect(() => {
-    const savedKey = localStorage.getItem("moderator-key");
-    if (savedKey) {
-      setModeratorKey(savedKey);
+    const savedSessionId = localStorage.getItem("moderator-session-id");
+    const savedTeamId = localStorage.getItem("moderator-team-id");
+    const savedEmail = localStorage.getItem("moderator-email");
+    const savedName = localStorage.getItem("moderator-name");
+
+    if (savedSessionId && savedTeamId) {
+      // Verify session is still valid
+      fetch("/api/moderator/auth", {
+        headers: { "x-session-id": savedSessionId },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.authenticated) {
+            setSessionId(savedSessionId);
+            setTeamId(savedTeamId);
+            setModeratorEmail(savedEmail);
+            setModeratorName(savedName);
+          } else {
+            // Session expired, clear storage
+            localStorage.removeItem("moderator-session-id");
+            localStorage.removeItem("moderator-team-id");
+            localStorage.removeItem("moderator-email");
+            localStorage.removeItem("moderator-name");
+          }
+        })
+        .catch(() => {
+          // Clear invalid session
+          localStorage.removeItem("moderator-session-id");
+          localStorage.removeItem("moderator-team-id");
+          localStorage.removeItem("moderator-email");
+          localStorage.removeItem("moderator-name");
+        });
     }
   }, []);
 
@@ -232,7 +212,7 @@ export function ModeratorDashboard() {
         questions?: Question[];
       },
     ) => {
-      if (!moderatorKey) return;
+      if (!sessionId) return;
 
       setIsLoading(true);
       try {
@@ -240,7 +220,7 @@ export function ModeratorDashboard() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-moderator-key": moderatorKey,
+            "x-session-id": sessionId,
           },
           body: JSON.stringify({
             action,
@@ -252,7 +232,19 @@ export function ModeratorDashboard() {
         });
         const result = await res.json();
         if (!res.ok) {
-          throw new Error(result.error || "Action failed");
+          const errorMsg = result.error || "Action failed";
+          toast.error(errorMsg);
+          throw new Error(errorMsg);
+        }
+        // Show success toast for important actions
+        if (action === "start") {
+          toast.success("Quiz started!");
+        } else if (action === "showResults") {
+          toast.success("Results are now visible to participants!");
+        } else if (action === "uploadQuestions") {
+          toast.success("Questions uploaded successfully!");
+        } else if (action === "clearDatabase") {
+          toast.success("Database cleared!");
         }
         await mutate();
         return result;
@@ -260,12 +252,34 @@ export function ModeratorDashboard() {
         setIsLoading(false);
       }
     },
-    [moderatorKey, mutate],
+    [sessionId, mutate],
   );
 
+  const handleAuth = (
+    newSessionId: string,
+    newTeamId: string,
+    email: string,
+    name: string,
+  ) => {
+    setSessionId(newSessionId);
+    setTeamId(newTeamId);
+    setModeratorEmail(email);
+    setModeratorName(name);
+    localStorage.setItem("moderator-session-id", newSessionId);
+    localStorage.setItem("moderator-team-id", newTeamId);
+    localStorage.setItem("moderator-email", email);
+    localStorage.setItem("moderator-name", name);
+  };
+
   const handleLogout = () => {
-    localStorage.removeItem("moderator-key");
-    setModeratorKey(null);
+    localStorage.removeItem("moderator-session-id");
+    localStorage.removeItem("moderator-team-id");
+    localStorage.removeItem("moderator-email");
+    localStorage.removeItem("moderator-name");
+    setSessionId(null);
+    setTeamId(null);
+    setModeratorEmail(null);
+    setModeratorName(null);
   };
 
   const handleStartQuiz = () => {
@@ -326,8 +340,8 @@ export function ModeratorDashboard() {
     setShowClearConfirm(false);
   };
 
-  if (!moderatorKey) {
-    return <ModeratorLogin onLogin={setModeratorKey} />;
+  if (!sessionId || !teamId) {
+    return <ModeratorAuth onAuth={handleAuth} />;
   }
 
   if (!data) {
@@ -348,11 +362,26 @@ export function ModeratorDashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">Quiz Moderator</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-foreground">
+              Quiz Moderator
+            </h1>
+            {moderatorName && (
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                Welcome, {moderatorName}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               {participantCount} participant{participantCount !== 1 ? "s" : ""}
             </span>
+            <button
+              onClick={() => (window.location.href = "/")}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Home
+            </button>
             <button
               onClick={handleLogout}
               className="text-sm text-muted-foreground hover:text-foreground"
@@ -364,6 +393,57 @@ export function ModeratorDashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Team URL Display */}
+        {teamId && (
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-xl p-6 mb-6">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <Share2 className="w-5 h-5 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">
+                    Your Quiz Link
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Share this link with participants to join your quiz
+                </p>
+                <div className="bg-background border border-border rounded-lg p-3 mb-3">
+                  <code className="text-sm font-mono text-foreground break-all">
+                    {typeof window !== "undefined"
+                      ? window.location.origin
+                      : ""}
+                    /quiz/{teamId}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShareLink
+                    url={
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/quiz/${teamId}`
+                        : undefined
+                    }
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url =
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/quiz/${teamId}`
+                          : "";
+                      navigator.clipboard.writeText(teamId).then(() => {
+                        toast.success("Team ID copied!");
+                      });
+                    }}
+                  >
+                    Copy Team ID
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid md:grid-cols-3 gap-6">
           {/* Control Panel */}
           <div className="md:col-span-2 space-y-6">
@@ -650,50 +730,56 @@ export function ModeratorDashboard() {
           {/* Leaderboard */}
           <div className="space-y-6">
             <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">
-                Leaderboard
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Leaderboard
+                </h2>
+                {leaderboardData && (
+                  <span className="text-sm text-muted-foreground">
+                    {leaderboardData.totalParticipants} participant
+                    {leaderboardData.totalParticipants !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
               {leaderboardData?.leaderboard &&
               leaderboardData.leaderboard.length > 0 ? (
-                <div className="space-y-3">
-                  {leaderboardData.leaderboard
-                    .slice(0, 10)
-                    .map((entry, index) => (
-                      <div
-                        key={entry.email}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {leaderboardData.leaderboard.map((entry, index) => (
+                    <div
+                      key={entry.email}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                    >
+                      <span
+                        className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                          index === 0
+                            ? "bg-yellow-500 text-white"
+                            : index === 1
+                            ? "bg-gray-400 text-white"
+                            : index === 2
+                            ? "bg-amber-600 text-white"
+                            : "bg-muted text-muted-foreground",
+                        )}
                       >
-                        <span
-                          className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                            index === 0
-                              ? "bg-yellow-500 text-white"
-                              : index === 1
-                              ? "bg-gray-400 text-white"
-                              : index === 2
-                              ? "bg-amber-600 text-white"
-                              : "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {index + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {entry.email}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-foreground">
-                            {entry.correctCount}/
-                            {leaderboardData?.totalQuestions ||
-                              entry.totalAnswered}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {entry.percentage}%
-                          </p>
-                        </div>
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {entry.email}
+                        </p>
                       </div>
-                    ))}
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">
+                          {entry.correctCount}/
+                          {leaderboardData?.totalQuestions ||
+                            entry.totalAnswered}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {entry.percentage}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm text-center py-4">

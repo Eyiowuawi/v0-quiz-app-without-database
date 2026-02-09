@@ -1,5 +1,5 @@
-import { QuizClient } from "@/components/quiz-client"
+import { LandingPage } from "@/components/landing-page";
 
 export default function Home() {
-  return <QuizClient />
+  return <LandingPage />;
 }

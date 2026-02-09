@@ -11,24 +11,24 @@ interface StoredAnswer {
 }
 
 // Helper to get questions (custom or default)
-async function getQuestions(): Promise<Question[]> {
-  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS)
+async function getQuestions(teamId: string): Promise<Question[]> {
+  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS(teamId))
   return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, questionIndex, selectedOption } = await request.json()
+    const { email, questionIndex, selectedOption, teamId } = await request.json()
 
-    if (!email || questionIndex === undefined || selectedOption === undefined) {
+    if (!email || questionIndex === undefined || selectedOption === undefined || !teamId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     const normalizedEmail = email.toLowerCase().trim()
-    const questions = await getQuestions()
+    const questions = await getQuestions(teamId)
 
     // Verify quiz is active and on this question
-    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE)
+    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
     if (!state || !state.isActive || state.currentQuestionIndex !== questionIndex) {
       return NextResponse.json({ error: 'Question not currently active' }, { status: 400 })
     }
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Store answer with unique key per user per question
-    const answerKey = KEYS.USER_ANSWER(normalizedEmail, questionIndex)
+    const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, questionIndex)
     const isCorrect = selectedOption === question.correctOption
     
     const answer: StoredAnswer = {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     await redis.set(answerKey, answer)
 
     // Also update the main answers list for leaderboard calculations
-    const allAnswers = await redis.get<StoredAnswer[]>(KEYS.ANSWERS) || []
+    const allAnswers = await redis.get<StoredAnswer[]>(KEYS.ANSWERS(teamId)) || []
     const existingIdx = allAnswers.findIndex(
       a => a.email === normalizedEmail && a.questionIndex === questionIndex
     )
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     } else {
       allAnswers.push(answer)
     }
-    await redis.set(KEYS.ANSWERS, allAnswers)
+    await redis.set(KEYS.ANSWERS(teamId), allAnswers)
 
     // Don't return correct answer - just confirm submission
     return NextResponse.json({ success: true })
@@ -77,19 +77,20 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const email = request.nextUrl.searchParams.get('email')
+    const teamId = request.nextUrl.searchParams.get('teamId')
     const questionIndexParam = request.nextUrl.searchParams.get('questionIndex')
     
-    if (!email) {
-      return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    if (!email || !teamId) {
+      return NextResponse.json({ error: 'Email and teamId required' }, { status: 400 })
     }
 
     const normalizedEmail = email.toLowerCase().trim()
-    const questions = await getQuestions()
+    const questions = await getQuestions(teamId)
 
     // If specific question requested, return just that answer
     if (questionIndexParam !== null) {
       const questionIndex = parseInt(questionIndexParam, 10)
-      const answerKey = KEYS.USER_ANSWER(normalizedEmail, questionIndex)
+      const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, questionIndex)
       const answer = await redis.get<StoredAnswer>(answerKey)
       
       if (answer) {
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
     const userAnswers: { questionIndex: number; selectedOption: number }[] = []
     
     for (let i = 0; i < questions.length; i++) {
-      const answerKey = KEYS.USER_ANSWER(normalizedEmail, i)
+      const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, i)
       const answer = await redis.get<StoredAnswer>(answerKey)
       if (answer) {
         userAnswers.push({
