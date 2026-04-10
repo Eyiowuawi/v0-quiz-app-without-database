@@ -64,9 +64,9 @@ export function ModeratorAuth({ onAuth }: ModeratorAuthProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
+        <div className="bg-card border-2 border-border rounded-3xl p-8 shadow-xl shadow-chart-2/12">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {isLogin ? "Moderator Login" : "Create Account"}

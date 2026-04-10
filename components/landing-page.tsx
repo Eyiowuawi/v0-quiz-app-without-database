@@ -30,15 +30,25 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen relative overflow-hidden">
+      <div
+        className="pointer-events-none fixed inset-0 -z-10"
+        aria-hidden
+      >
+        <div className="absolute -top-24 left-[10%] h-80 w-80 rounded-full bg-chart-2/25 blur-3xl" />
+        <div className="absolute top-1/3 -right-20 h-96 w-96 rounded-full bg-chart-1/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-chart-4/25 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-chart-5/15 blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 h-56 w-56 rounded-full bg-chart-3/20 blur-3xl" />
+      </div>
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 py-16 md:py-24">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/15 text-primary border border-primary/20 mb-6">
             <Zap className="w-4 h-4" />
             <span className="text-sm font-medium">Real-Time Quiz Platform</span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-linear-to-r from-chart-2 via-primary to-chart-5 bg-clip-text text-transparent drop-shadow-sm">
             Quiz Runner
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8">
@@ -72,8 +82,8 @@ export function LandingPage() {
 
         {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 rounded-xl bg-chart-2/15 flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -85,8 +95,8 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 rounded-xl bg-chart-3/20 flex items-center justify-center mb-4">
               <BarChart3 className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -98,8 +108,8 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 rounded-xl bg-chart-4/30 flex items-center justify-center mb-4">
               <Clock className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -111,8 +121,8 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 rounded-xl bg-chart-3/20 flex items-center justify-center mb-4">
               <CheckCircle2 className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -124,8 +134,8 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 rounded-xl bg-chart-5/20 flex items-center justify-center mb-4">
               <Share2 className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -137,8 +147,8 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 rounded-xl bg-chart-1/20 flex items-center justify-center mb-4">
               <Trophy className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -154,7 +164,7 @@ export function LandingPage() {
         {/* Join Quiz Section */}
         <div
           id="join-quiz"
-          className="bg-card border border-border rounded-2xl p-8 md:p-12 shadow-xl"
+          className="bg-card border-2 border-primary/25 rounded-3xl p-8 md:p-12 shadow-xl shadow-chart-2/15"
         >
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
