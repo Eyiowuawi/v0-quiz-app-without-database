@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState } from '@/lib/redis'
 import { quizQuestions, Question } from '@/lib/quiz-data'
 
+const DEFAULT_QUIZ_STATE: QuizState = {
+  currentQuestionIndex: -1,
+  isActive: false,
+  showResults: false,
+  timerMode: false,
+  timerDuration: 30,
+}
+
 // Helper to get questions (custom or default)
 async function getQuestions(teamId: string): Promise<Question[]> {
   const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS(teamId))
@@ -16,24 +24,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 })
     }
 
-    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
+    const stateKey = KEYS.QUIZ_STATE(teamId)
+    let state = await redis.get<QuizState>(stateKey)
     const questions = await getQuestions(teamId)
     
     if (!state) {
-      // Initialize default state
-      const defaultState: QuizState = {
-        currentQuestionIndex: -1, // -1 means quiz hasn't started
-        isActive: false,
-        showResults: false,
-        timerMode: false,
-        timerDuration: 30,
-      }
-      await redis.set(KEYS.QUIZ_STATE(teamId), defaultState)
-      return NextResponse.json({ 
-        state: defaultState, 
-        totalQuestions: questions.length,
-        currentQuestion: null 
-      })
+      // SETNX: only one writer initializes; others re-fetch so we never overwrite
+      // a state another tab/moderator created between GET and SET.
+      await redis.setnx(stateKey, DEFAULT_QUIZ_STATE)
+      state = (await redis.get<QuizState>(stateKey)) ?? DEFAULT_QUIZ_STATE
     }
 
     const currentQuestion = state.currentQuestionIndex >= 0 && state.currentQuestionIndex < questions.length
