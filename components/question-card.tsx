@@ -106,7 +106,7 @@ export function QuestionCard({
 
             return (
               <button
-                key={`${questionIndex}-${index}`}
+                key={`q${question.id}-opt${index}`}
                 onClick={() => !hasSubmitted && setSelectedOption(index)}
                 disabled={hasSubmitted || isSubmitting}
                 className={cn(
