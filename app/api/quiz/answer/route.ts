@@ -39,10 +39,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid question' }, { status: 400 })
     }
 
-    // Store answer with unique key per user per question
+    // One submission per user per question — no changes after lock-in
     const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, questionIndex)
+    const already = await redis.get<StoredAnswer>(answerKey)
+    if (already) {
+      return NextResponse.json(
+        { error: 'Answer already submitted for this question' },
+        { status: 409 },
+      )
+    }
+
     const isCorrect = selectedOption === question.correctOption
-    
+
     const answer: StoredAnswer = {
       email: normalizedEmail,
       questionIndex,

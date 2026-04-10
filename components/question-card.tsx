@@ -59,8 +59,10 @@ export function QuestionCard({
     );
   }, [questionIndex, previousAnswer]);
 
+  const answerLocked = lastSubmittedOption !== null;
+
   const handleOptionSelect = async (optionIndex: number) => {
-    if (optionIndex === lastSubmittedOption) return;
+    if (answerLocked || isSubmitting) return;
 
     setSelectedOption(optionIndex);
     setIsSubmitting(true);
@@ -80,7 +82,19 @@ export function QuestionCard({
       if (res.ok) {
         setLastSubmittedOption(optionIndex);
         onAnswer(optionIndex);
-        toast.success("Locked in!");
+        toast.success("Answer saved");
+      } else if (res.status === 409 && teamId) {
+        const errorData = await res.json().catch(() => ({}));
+        const check = await fetch(
+          `/api/quiz/answer?email=${encodeURIComponent(email)}&teamId=${encodeURIComponent(teamId)}&questionIndex=${questionIndex}`,
+        ).then((r) => r.json());
+        if (check.answer?.selectedOption !== undefined) {
+          const opt = check.answer.selectedOption as number;
+          setLastSubmittedOption(opt);
+          setSelectedOption(opt);
+          onAnswer(opt);
+        }
+        toast.error(errorData.error || "Answer already submitted");
       } else {
         const errorData = await res.json().catch(() => ({}));
         toast.error(errorData.error || "Failed to submit answer");
@@ -173,8 +187,11 @@ export function QuestionCard({
 
         <div className="relative space-y-3">
           {question.options.map((option, index) => {
-            const isSelected = selectedOption === index;
-            const isSubmitted = lastSubmittedOption === index;
+            const isHighlighted = selectedOption === index;
+            const syncedWithServer =
+              lastSubmittedOption !== null &&
+              selectedOption === lastSubmittedOption &&
+              lastSubmittedOption === index;
             const badge = OPTION_BADGE[index % OPTION_BADGE.length];
             const selectedStyle = OPTION_SELECTED[index % OPTION_SELECTED.length];
 
@@ -183,23 +200,25 @@ export function QuestionCard({
                 key={`${questionIndex}-${index}`}
                 type="button"
                 onClick={() => handleOptionSelect(index)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || answerLocked}
                 className={cn(
                   "group w-full rounded-2xl border-4 p-4 text-left transition-all duration-200",
                   "focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/25",
                   !isSubmitting &&
+                    !answerLocked &&
                     "cursor-pointer hover:-translate-y-0.5 active:translate-y-0",
-                  isSelected || isSubmitted
+                  isHighlighted
                     ? selectedStyle
                     : "border-border bg-card hover:border-primary/40 hover:shadow-md",
                   isSubmitting && "cursor-wait opacity-75",
+                  answerLocked && !isHighlighted && "opacity-55",
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span
                     className={cn(
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 text-sm font-black transition-colors",
-                      isSelected || isSubmitted
+                      isHighlighted
                         ? "border-white/35 bg-white/20 text-white"
                         : cn("border-current bg-background/80", badge),
                     )}
@@ -209,12 +228,12 @@ export function QuestionCard({
                   <span className="flex-1 text-base font-bold leading-snug">
                     {option}
                   </span>
-                  {isSubmitted && (
+                  {syncedWithServer && !isSubmitting && (
                     <span className="shrink-0 rounded-lg bg-white/25 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white">
                       Saved
                     </span>
                   )}
-                  {isSubmitting && isSelected && (
+                  {isSubmitting && isHighlighted && (
                     <div className="h-6 w-6 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   )}
                 </div>
@@ -222,17 +241,6 @@ export function QuestionCard({
             );
           })}
         </div>
-
-        {lastSubmittedOption !== null && (
-          <div className="relative mt-6 rounded-2xl border-4 border-success/40 bg-linear-to-r from-success/15 via-chart-3/10 to-success/15 p-4 text-center">
-            <p className="text-sm font-black uppercase tracking-wide text-success">
-              Answer locked in
-            </p>
-            <p className="mt-1 text-xs font-semibold text-muted-foreground">
-              Tap another choice anytime to change your answer.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

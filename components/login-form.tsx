@@ -1,40 +1,40 @@
-"use client"
+"use client";
 
-import React from "react"
+import React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
-import { useRouter } from "next/navigation"
-import { Users, ArrowRight } from "lucide-react"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { Users, ArrowRight } from "lucide-react";
 
 interface LoginFormProps {
-  onLogin: (email: string, displayName: string) => void
-  teamId?: string | null
+  onLogin: (email: string, displayName: string) => void;
+  teamId?: string | null;
 }
 
 export function LoginForm({ onLogin, teamId }: LoginFormProps) {
-  const [displayName, setDisplayName] = useState("")
-  const [email, setEmail] = useState("")
-  const [manualTeamId, setManualTeamId] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
-  
-  const effectiveTeamId = teamId || manualTeamId
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [manualTeamId, setManualTeamId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const effectiveTeamId = teamId || manualTeamId;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    
+    e.preventDefault();
+    setError("");
+
     if (!effectiveTeamId) {
-      setError("Please enter a team ID")
-      toast.error("Team ID is required")
-      return
+      setError("Please enter a team ID");
+      toast.error("Team ID is required");
+      return;
     }
-    
-    setIsLoading(true)
+
+    setIsLoading(true);
 
     try {
       const res = await fetch("/api/auth", {
@@ -45,40 +45,40 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
           name: displayName,
           teamId: effectiveTeamId,
         }),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
 
       if (!res.ok) {
-        const errorMsg = data.error || "Login failed"
-        setError(errorMsg)
-        toast.error(errorMsg)
-        return
+        const errorMsg = data.error || "Login failed";
+        setError(errorMsg);
+        toast.error(errorMsg);
+        return;
       }
 
       if (effectiveTeamId) {
-        localStorage.setItem(`quiz-email-${effectiveTeamId}`, data.email)
+        localStorage.setItem(`quiz-email-${effectiveTeamId}`, data.email);
         localStorage.setItem(
           `quiz-name-${effectiveTeamId}`,
           data.name || displayName.trim(),
-        )
+        );
       }
-      toast.success(`You’re in, ${data.name || displayName.trim()}!`)
-      onLogin(data.email, data.name || displayName.trim())
+      toast.success(`You’re in, ${data.name || displayName.trim()}!`);
+      onLogin(data.email, data.name || displayName.trim());
     } catch {
-      const errorMsg = "Something went wrong. Please try again."
-      setError(errorMsg)
-      toast.error(errorMsg)
+      const errorMsg = "Something went wrong. Please try again.";
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-  
+  };
+
   const handleEnterTeamId = () => {
     if (manualTeamId.trim()) {
-      router.push(`/quiz/${manualTeamId.trim()}`)
+      router.push(`/quiz/${manualTeamId.trim()}`);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -92,10 +92,12 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
             <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-primary/25 to-chart-2/25 flex items-center justify-center mx-auto mb-4 border-4 border-primary/30 shadow-inner">
               <Users className="w-8 h-8 text-primary" strokeWidth={2.4} />
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground mb-2">Enter the game</h1>
+            <h1 className="text-3xl font-black tracking-tight text-foreground mb-2">
+              Enter the game
+            </h1>
             <p className="text-sm font-semibold text-muted-foreground">
               {teamId
-                ? "Add your name and school email so the host can see who’s playing."
+                ? "Add your name and school email so the host can see who's playing."
                 : "Enter your team ID, then your name and email to join."}
             </p>
           </div>
@@ -171,9 +173,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
               <Button
                 type="submit"
                 className="w-full h-12 text-lg font-medium"
-                disabled={
-                  isLoading || !email || displayName.trim().length < 2
-                }
+                disabled={isLoading || !email || displayName.trim().length < 2}
               >
                 {isLoading ? "Joining..." : "Join Quiz"}
               </Button>
@@ -201,5 +201,5 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
