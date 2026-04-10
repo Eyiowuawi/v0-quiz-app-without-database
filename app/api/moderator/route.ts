@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState, User, ModeratorSession } from '@/lib/redis'
 import { quizQuestions, Question } from '@/lib/quiz-data'
+import {
+  atomicApplyModeratorQuizState,
+  atomicClearTeamQuizData,
+  atomicResetModeratorQuiz,
+} from '@/lib/atomic-moderator-quiz'
 
 async function verifyModerator(request: NextRequest): Promise<{ teamId: string; email: string } | null> {
   const sessionId = request.headers.get('x-session-id')
@@ -30,32 +35,6 @@ const DEFAULT_STATE: QuizState = {
 async function getQuestions(teamId: string): Promise<Question[]> {
   const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS(teamId))
   return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
-}
-
-// Helper to clear ALL database records for a team
-async function clearAllData(teamId: string) {
-  // Clear quiz state
-  await redis.del(KEYS.QUIZ_STATE(teamId))
-  
-  // Clear main answers array
-  await redis.del(KEYS.ANSWERS(teamId))
-  
-  // Get all users to clear their session and answer keys
-  const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
-  const questions = await getQuestions(teamId)
-  
-  for (const user of users) {
-    // Clear user session
-    await redis.del(KEYS.USER_SESSION(teamId, user.email))
-    
-    // Clear all user answers
-    for (let i = 0; i < questions.length; i++) {
-      await redis.del(KEYS.USER_ANSWER(teamId, user.email, i))
-    }
-  }
-  
-  // Clear users list
-  await redis.del(KEYS.USERS(teamId))
 }
 
 export async function GET(request: NextRequest) {
@@ -93,69 +72,20 @@ export async function POST(request: NextRequest) {
     const { teamId } = moderator
     const { action, questionIndex, timerMode, timerDuration, questions: uploadedQuestions } = await request.json()
     const questions = await getQuestions(teamId)
+    const qc = questions.length
+    const now = Date.now()
 
-    let state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId)) || { ...DEFAULT_STATE }
+    const buildStateResponse = (state: QuizState) =>
+      NextResponse.json({
+        success: true,
+        state,
+        currentQuestion:
+          state.currentQuestionIndex >= 0
+            ? questions[state.currentQuestionIndex]
+            : null,
+      })
 
     switch (action) {
-      case 'start':
-        state = {
-          currentQuestionIndex: 0,
-          isActive: true,
-          showResults: false,
-          timerMode: timerMode ?? state.timerMode ?? false,
-          timerDuration: timerDuration ?? state.timerDuration ?? 30,
-          questionStartTime: Date.now(),
-        }
-        break
-
-      case 'next':
-        if (state.currentQuestionIndex < questions.length - 1) {
-          state.currentQuestionIndex++
-          state.isActive = true
-          state.questionStartTime = Date.now()
-        } else {
-          state.isActive = false
-          state.showResults = true
-        }
-        break
-
-      case 'previous':
-        if (state.currentQuestionIndex > 0) {
-          state.currentQuestionIndex--
-          state.isActive = true
-          state.questionStartTime = Date.now()
-        }
-        break
-
-      case 'goto':
-        if (questionIndex >= 0 && questionIndex < questions.length) {
-          state.currentQuestionIndex = questionIndex
-          state.isActive = true
-          state.showResults = false
-          state.questionStartTime = Date.now()
-        }
-        break
-
-      case 'pause':
-        state.isActive = false
-        break
-
-      case 'resume':
-        state.isActive = true
-        state.showResults = false
-        state.questionStartTime = Date.now()
-        break
-
-      case 'showResults':
-        state.isActive = false
-        state.showResults = true
-        break
-
-      case 'setTimerMode':
-        state.timerMode = timerMode ?? false
-        state.timerDuration = timerDuration ?? 30
-        break
-
       case 'uploadQuestions':
         // Validate uploaded questions
         if (!uploadedQuestions || !Array.isArray(uploadedQuestions) || uploadedQuestions.length === 0) {
@@ -200,42 +130,153 @@ export async function POST(request: NextRequest) {
           questions: quizQuestions
         })
 
-      case 'reset':
-        // Reset quiz state and clear all answers
-        state = { ...DEFAULT_STATE }
-        await redis.set(KEYS.ANSWERS(teamId), [])
-        
-        const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
-        for (const user of users) {
-          for (let i = 0; i < questions.length; i++) {
-            await redis.del(KEYS.USER_ANSWER(teamId, user.email, i))
-          }
+      case 'clearDatabase': {
+        const cleared = await atomicClearTeamQuizData(teamId, questions.length)
+        if (!cleared) {
+          return NextResponse.json(
+            { error: 'Could not clear data. Please try again.' },
+            { status: 503 },
+          )
         }
-        break
-
-      case 'clearDatabase':
-        // Clear EVERYTHING for this team
-        await clearAllData(teamId)
-        await redis.del(KEYS.CUSTOM_QUESTIONS(teamId))
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           message: 'Database cleared completely',
           state: DEFAULT_STATE,
-          questions: quizQuestions
+          questions: quizQuestions,
         })
+      }
+
+      case 'start': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'start', {
+          qc,
+          now,
+          ...(typeof timerMode === 'boolean' ? { tm: timerMode } : {}),
+          ...(typeof timerDuration === 'number' ? { td: timerDuration } : {}),
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'next': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'next', {
+          qc,
+          now,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'previous': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'previous', {
+          qc,
+          now,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'goto': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'goto', {
+          qc,
+          now,
+          qi: questionIndex,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'pause': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'pause', {
+          qc,
+          now,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'resume': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'resume', {
+          qc,
+          now,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'showResults': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'showResults', {
+          qc,
+          now,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'setTimerMode': {
+        const r = await atomicApplyModeratorQuizState(teamId, 'setTimerMode', {
+          qc,
+          now,
+          tm: timerMode ?? false,
+          td: timerDuration ?? 30,
+        })
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not update quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
+
+      case 'reset': {
+        const r = await atomicResetModeratorQuiz(teamId, qc)
+        if (!r.ok) {
+          return NextResponse.json(
+            { error: 'Could not reset quiz. Please try again.' },
+            { status: 503 },
+          )
+        }
+        return buildStateResponse(r.state)
+      }
 
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
-
-    await redis.set(KEYS.QUIZ_STATE(teamId), state)
-    const updatedQuestions = await getQuestions(teamId)
-
-    return NextResponse.json({ 
-      success: true, 
-      state,
-      currentQuestion: state.currentQuestionIndex >= 0 ? updatedQuestions[state.currentQuestionIndex] : null
-    })
   } catch (error) {
     console.error('Moderator POST error:', error)
     return NextResponse.json({ error: 'Failed to update quiz state' }, { status: 500 })
