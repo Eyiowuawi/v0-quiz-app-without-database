@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { redis, KEYS, QuizState, User } from '@/lib/redis'
+import { redis, KEYS, QuizState, User, ModeratorSession } from '@/lib/redis'
 import { quizQuestions, Question } from '@/lib/quiz-data'
 
-const MODERATOR_KEY = process.env.MODERATOR_KEY || 'admin123'
+async function verifyModerator(request: NextRequest): Promise<{ teamId: string; email: string } | null> {
+  const sessionId = request.headers.get('x-session-id')
 
-function verifyModerator(request: NextRequest): boolean {
-  const authHeader = request.headers.get('x-moderator-key')
-  return authHeader === MODERATOR_KEY
+  if (!sessionId) {
+    return null
+  }
+
+  const session = await redis.get<ModeratorSession>(KEYS.MODERATOR_SESSION(sessionId))
+
+  if (!session || session.expiresAt < Date.now()) {
+    return null
+  }
+
+  return { teamId: session.teamId, email: session.email }
 }
 
 const DEFAULT_STATE: QuizState = {
@@ -18,52 +27,55 @@ const DEFAULT_STATE: QuizState = {
 }
 
 // Helper to get questions (custom or default)
-async function getQuestions(): Promise<Question[]> {
-  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS)
+async function getQuestions(teamId: string): Promise<Question[]> {
+  const customQuestions = await redis.get<Question[]>(KEYS.CUSTOM_QUESTIONS(teamId))
   return customQuestions && customQuestions.length > 0 ? customQuestions : quizQuestions
 }
 
-// Helper to clear ALL database records
-async function clearAllData() {
+// Helper to clear ALL database records for a team
+async function clearAllData(teamId: string) {
   // Clear quiz state
-  await redis.del(KEYS.QUIZ_STATE)
-  
+  await redis.del(KEYS.QUIZ_STATE(teamId))
+
   // Clear main answers array
-  await redis.del(KEYS.ANSWERS)
-  
+  await redis.del(KEYS.ANSWERS(teamId))
+
   // Get all users to clear their session and answer keys
-  const users = await redis.get<User[]>(KEYS.USERS) || []
-  const questions = await getQuestions()
-  
+  const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
+  const questions = await getQuestions(teamId)
+
   for (const user of users) {
     // Clear user session
-    await redis.del(KEYS.USER_SESSION(user.email))
-    
+    await redis.del(KEYS.USER_SESSION(teamId, user.email))
+
     // Clear all user answers
     for (let i = 0; i < questions.length; i++) {
-      await redis.del(KEYS.USER_ANSWER(user.email, i))
+      await redis.del(KEYS.USER_ANSWER(teamId, user.email, i))
     }
   }
-  
+
   // Clear users list
-  await redis.del(KEYS.USERS)
+  await redis.del(KEYS.USERS(teamId))
 }
 
 export async function GET(request: NextRequest) {
-  if (!verifyModerator(request)) {
+  const moderator = await verifyModerator(request)
+  if (!moderator) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE)
-    const users = await redis.get<User[]>(KEYS.USERS) || []
-    const questions = await getQuestions()
+    const { teamId } = moderator
+    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
+    const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
+    const questions = await getQuestions(teamId)
 
     return NextResponse.json({
       state: state || DEFAULT_STATE,
       questions,
       participantCount: users.length,
       participants: users,
+      teamId,
     })
   } catch (error) {
     console.error('Moderator GET error:', error)
@@ -72,15 +84,17 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!verifyModerator(request)) {
+  const moderator = await verifyModerator(request)
+  if (!moderator) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
+    const { teamId } = moderator
     const { action, questionIndex, timerMode, timerDuration, questions: uploadedQuestions } = await request.json()
-    const questions = await getQuestions()
+    const questions = await getQuestions(teamId)
 
-    let state = await redis.get<QuizState>(KEYS.QUIZ_STATE) || { ...DEFAULT_STATE }
+    let state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId)) || { ...DEFAULT_STATE }
 
     switch (action) {
       case 'start':
@@ -147,80 +161,80 @@ export async function POST(request: NextRequest) {
         if (!uploadedQuestions || !Array.isArray(uploadedQuestions) || uploadedQuestions.length === 0) {
           return NextResponse.json({ error: 'Invalid questions format' }, { status: 400 })
         }
-        
+
         // Validate each question has required fields
         for (let i = 0; i < uploadedQuestions.length; i++) {
           const q = uploadedQuestions[i]
           if (!q.question || !q.options || !Array.isArray(q.options) || q.options.length < 2) {
-            return NextResponse.json({ 
-              error: `Question ${i + 1} is invalid. Each question must have a "question" text and at least 2 "options".` 
+            return NextResponse.json({
+              error: `Question ${i + 1} is invalid. Each question must have a "question" text and at least 2 "options".`,
             }, { status: 400 })
           }
           if (typeof q.correctOption !== 'number' || q.correctOption < 0 || q.correctOption >= q.options.length) {
-            return NextResponse.json({ 
-              error: `Question ${i + 1} has invalid "correctOption". Must be a number between 0 and ${q.options.length - 1}.` 
+            return NextResponse.json({
+              error: `Question ${i + 1} has invalid "correctOption". Must be a number between 0 and ${q.options.length - 1}.`,
             }, { status: 400 })
           }
         }
-        
+
         // Add IDs if not present
         const questionsWithIds = uploadedQuestions.map((q: Question, i: number) => ({
           ...q,
           id: q.id || i + 1,
         }))
-        
-        await redis.set(KEYS.CUSTOM_QUESTIONS, questionsWithIds)
-        
-        return NextResponse.json({ 
-          success: true, 
+
+        await redis.set(KEYS.CUSTOM_QUESTIONS(teamId), questionsWithIds)
+
+        return NextResponse.json({
+          success: true,
           message: `Uploaded ${questionsWithIds.length} questions successfully`,
-          questions: questionsWithIds
+          questions: questionsWithIds,
         })
 
       case 'resetQuestions':
         // Clear custom questions, revert to default
-        await redis.del(KEYS.CUSTOM_QUESTIONS)
-        return NextResponse.json({ 
-          success: true, 
+        await redis.del(KEYS.CUSTOM_QUESTIONS(teamId))
+        return NextResponse.json({
+          success: true,
           message: 'Questions reset to default',
-          questions: quizQuestions
+          questions: quizQuestions,
         })
 
       case 'reset':
         // Reset quiz state and clear all answers
         state = { ...DEFAULT_STATE }
-        await redis.set(KEYS.ANSWERS, [])
-        
-        const users = await redis.get<User[]>(KEYS.USERS) || []
+        await redis.set(KEYS.ANSWERS(teamId), [])
+
+        const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
         for (const user of users) {
           for (let i = 0; i < questions.length; i++) {
-            await redis.del(KEYS.USER_ANSWER(user.email, i))
+            await redis.del(KEYS.USER_ANSWER(teamId, user.email, i))
           }
         }
         break
 
       case 'clearDatabase':
-        // Clear EVERYTHING including users, questions, sessions
-        await clearAllData()
-        await redis.del(KEYS.CUSTOM_QUESTIONS)
-        return NextResponse.json({ 
-          success: true, 
+        // Clear EVERYTHING for this team
+        await clearAllData(teamId)
+        await redis.del(KEYS.CUSTOM_QUESTIONS(teamId))
+        return NextResponse.json({
+          success: true,
           message: 'Database cleared completely',
           state: DEFAULT_STATE,
-          questions: quizQuestions
+          questions: quizQuestions,
         })
 
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    await redis.set(KEYS.QUIZ_STATE, state)
-    const updatedQuestions = await getQuestions()
+    await redis.set(KEYS.QUIZ_STATE(teamId), state)
+    const updatedQuestions = await getQuestions(teamId)
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       state,
-      currentQuestion: state.currentQuestionIndex >= 0 ? updatedQuestions[state.currentQuestionIndex] : null
+      currentQuestion: state.currentQuestionIndex >= 0 ? updatedQuestions[state.currentQuestionIndex] : null,
     })
   } catch (error) {
     console.error('Moderator POST error:', error)
