@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redis, KEYS, QuizState, User } from "@/lib/redis";
 import { quizQuestions, Question } from "@/lib/quiz-data";
+import { displayNameForUser } from "@/lib/participant-name";
 
 interface StoredAnswer {
   email: string;
@@ -41,12 +42,21 @@ export async function GET(request: NextRequest) {
 
     if (email) {
       const normalizedEmail = email.toLowerCase().trim();
+      const allUsersForName =
+        (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
+      const selfUser = allUsersForName.find(
+        (u) => u.email.toLowerCase().trim() === normalizedEmail,
+      );
+      const participantDisplayName = selfUser
+        ? displayNameForUser(selfUser)
+        : normalizedEmail.split("@")[0];
 
       // If results not shown yet and not moderator, only return basic stats (no answers)
       if (!showResults && !isModerator) {
         // Just return that they need to wait
         return NextResponse.json({
           email: normalizedEmail,
+          displayName: participantDisplayName,
           resultsAvailable: false,
           message: "Results will be available when the quiz ends",
         });
@@ -101,6 +111,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         email: normalizedEmail,
+        displayName: participantDisplayName,
         resultsAvailable: true,
         correctCount,
         totalAnswered,
@@ -137,6 +148,8 @@ export async function GET(request: NextRequest) {
         // Include all users - those with 0 answers will show 0/0 or 0/totalQuestions
         return {
           email: user.email,
+          name: user.name,
+          displayName: displayNameForUser(user),
           correctCount,
           totalAnswered: userAnswers.length,
           percentage:

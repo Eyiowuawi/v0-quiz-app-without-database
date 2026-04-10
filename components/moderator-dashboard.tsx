@@ -29,6 +29,7 @@ interface Question {
 
 interface Participant {
   email: string;
+  name?: string;
   joinedAt: number;
 }
 
@@ -41,6 +42,8 @@ interface ModeratorData {
 
 interface LeaderboardEntry {
   email: string;
+  name?: string;
+  displayName?: string;
   correctCount: number;
   totalAnswered: number;
   percentage: number;
@@ -359,7 +362,7 @@ export function ModeratorDashboard() {
       : null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <header className="border-b border-border bg-card">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -764,7 +767,12 @@ export function ModeratorDashboard() {
                         {index + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                        <p className="text-sm font-bold text-foreground truncate">
+                          {entry.displayName ||
+                            entry.name?.trim() ||
+                            entry.email.split("@")[0]}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
                           {entry.email}
                         </p>
                       </div>
@@ -798,9 +806,15 @@ export function ModeratorDashboard() {
                   {data.participants.map((participant) => (
                     <div
                       key={participant.email}
-                      className="text-sm text-muted-foreground truncate"
+                      className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2"
                     >
-                      {participant.email}
+                      <p className="truncate text-sm font-bold text-foreground">
+                        {participant.name?.trim() ||
+                          participant.email.split("@")[0]}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {participant.email}
+                      </p>
                     </div>
                   ))}
                 </div>

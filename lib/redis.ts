@@ -35,6 +35,8 @@ export interface QuizState {
 
 export interface User {
   email: string;
+  /** Display name from participant join form (optional for older records). */
+  name?: string;
   joinedAt: number;
 }
 

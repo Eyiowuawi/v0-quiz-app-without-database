@@ -1,205 +1,348 @@
-"use client"
+"use client";
 
-import useSWR from "swr"
-import { cn } from "@/lib/utils"
+import useSWR from "swr";
+import { cn } from "@/lib/utils";
+import { Crown, Target, Trophy, Zap } from "lucide-react";
 
 interface ScorecardProps {
-  email: string
-  teamId?: string | null
+  email: string;
+  displayName: string;
+  teamId?: string | null;
 }
 
 interface ResultData {
-  email: string
-  resultsAvailable: boolean
-  message?: string
-  correctCount: number
-  totalAnswered: number
-  totalQuestions: number
-  percentage: number
+  email: string;
+  displayName?: string;
+  resultsAvailable: boolean;
+  message?: string;
+  correctCount: number;
+  totalAnswered: number;
+  totalQuestions: number;
+  percentage: number;
   answers: {
-    questionIndex: number
-    question: string
-    options: string[]
-    selectedOption: number | null
-    correctOption: number
-    isCorrect: boolean
-    answered: boolean
-  }[]
+    questionIndex: number;
+    question: string;
+    options: string[];
+    selectedOption: number | null;
+    correctOption: number;
+    isCorrect: boolean;
+    answered: boolean;
+  }[];
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export function Scorecard({ email, teamId }: ScorecardProps) {
+export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
   const { data, isLoading } = useSWR<ResultData>(
-    teamId ? `/api/quiz/results?email=${encodeURIComponent(email)}&teamId=${teamId}` : null,
+    teamId
+      ? `/api/quiz/results?email=${encodeURIComponent(email)}&teamId=${teamId}`
+      : null,
     fetcher,
-    { refreshInterval: 3000 }
-  )
+    { refreshInterval: 3000 },
+  );
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-14 w-14 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="font-black text-sm uppercase tracking-[0.2em] text-muted-foreground">
+            Loading scores…
+          </p>
+        </div>
       </div>
-    )
+    );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center text-muted-foreground">Failed to load results</div>
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center p-4">
+        <p className="text-center font-semibold text-muted-foreground">
+          Failed to load results
+        </p>
       </div>
-    )
+    );
   }
 
-  // Results not yet available
   if (!data.resultsAvailable) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Waiting for Results</h2>
-          <p className="text-muted-foreground">{data.message || 'The moderator will release results soon...'}</p>
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <div className="relative mx-auto mb-6 flex h-28 w-28 items-center justify-center">
+            <div
+              className="absolute inset-0 animate-ping rounded-full border-4 border-chart-4/30 opacity-40"
+              style={{ animationDuration: "2s" }}
+            />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-chart-4/40 bg-linear-to-br from-chart-4/25 to-primary/15">
+              <Trophy className="h-12 w-12 text-primary" strokeWidth={2.2} />
+            </div>
+          </div>
+          <p className="mb-2 font-black text-xs uppercase tracking-[0.35em] text-chart-2">
+            Almost there
+          </p>
+          <h2 className="mb-2 text-2xl font-black text-foreground">
+            Waiting for results
+          </h2>
+          <p className="text-sm font-semibold text-muted-foreground">
+            {data.message ||
+              "Your host will unlock the scoreboard soon. Keep this tab open!"}
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   const getGrade = (percentage: number) => {
-    if (percentage >= 90) return { grade: "A+", color: "text-green-500", message: "Outstanding!" }
-    if (percentage >= 80) return { grade: "A", color: "text-green-500", message: "Excellent work!" }
-    if (percentage >= 70) return { grade: "B", color: "text-blue-500", message: "Good job!" }
-    if (percentage >= 60) return { grade: "C", color: "text-yellow-500", message: "Not bad!" }
-    if (percentage >= 50) return { grade: "D", color: "text-orange-500", message: "Room for improvement" }
-    return { grade: "F", color: "text-red-500", message: "Better luck next time!" }
-  }
+    if (percentage >= 90)
+      return {
+        grade: "S",
+        ringClass:
+          "bg-linear-to-br from-chart-4 via-chart-1 to-primary p-1 shadow-lg",
+        textClass: "text-chart-1",
+        message: "Legendary run!",
+      };
+    if (percentage >= 80)
+      return {
+        grade: "A+",
+        ringClass:
+          "bg-linear-to-br from-primary via-chart-2 to-chart-5 p-1 shadow-lg",
+        textClass: "text-primary",
+        message: "Crushed it!",
+      };
+    if (percentage >= 70)
+      return {
+        grade: "A",
+        ringClass:
+          "bg-linear-to-br from-chart-2 to-chart-5 p-1 shadow-lg",
+        textClass: "text-chart-2",
+        message: "Great game!",
+      };
+    if (percentage >= 60)
+      return {
+        grade: "B",
+        ringClass:
+          "bg-linear-to-br from-chart-5 to-chart-3 p-1 shadow-lg",
+        textClass: "text-chart-5",
+        message: "Nice work!",
+      };
+    if (percentage >= 50)
+      return {
+        grade: "C",
+        ringClass:
+          "bg-linear-to-br from-chart-4 to-chart-3 p-1 shadow-lg",
+        textClass: "text-chart-4",
+        message: "Keep leveling up!",
+      };
+    return {
+      grade: "F",
+      ringClass: "bg-linear-to-br from-destructive/40 to-muted p-1 shadow-md",
+      textClass: "text-destructive",
+      message: "Next match is yours!",
+    };
+  };
 
-  const { grade, color, message } = getGrade(data.percentage)
+  const { grade, ringClass, textClass, message } = getGrade(data.percentage);
+  const headerName = data.displayName?.trim() || displayName;
 
   return (
-    <div className="min-h-screen bg-background p-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-card border border-border rounded-xl p-6 md:p-8 shadow-lg mb-6">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Quiz Complete!</h1>
-            <p className="text-muted-foreground">{email}</p>
-          </div>
+    <div className="min-h-[calc(100vh-56px)] px-3 py-6 sm:px-4 sm:py-8">
+      <div className="relative mx-auto max-w-2xl">
+        <div className="pointer-events-none absolute -top-6 left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-chart-4/30 blur-3xl" />
 
-          <div className="flex flex-col items-center mb-8">
-            <div className={cn("text-7xl md:text-8xl font-bold mb-2", color)}>
-              {grade}
-            </div>
-            <p className="text-lg text-muted-foreground">{message}</p>
-          </div>
+        <div
+          className={cn(
+            "relative mb-6 overflow-hidden rounded-[1.75rem] border-4 border-primary/35 bg-card p-6 shadow-xl sm:p-8",
+            "shadow-[0_14px_0_0_oklch(0.62_0.21_42_/_0.12)]",
+          )}
+        >
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-2 bg-linear-to-r from-chart-2 via-primary to-chart-5 opacity-90" />
 
-          <div className="grid grid-cols-3 gap-4 text-center mb-8">
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="text-3xl font-bold text-foreground">{data.correctCount}</div>
-              <div className="text-sm text-muted-foreground">Correct</div>
+          <div className="relative text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-success/40 bg-success/15 px-4 py-1.5">
+              <Crown className="h-4 w-4 text-success" />
+              <span className="font-black text-xs uppercase tracking-[0.25em] text-success">
+                Run complete
+              </span>
             </div>
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="text-3xl font-bold text-foreground">{data.totalAnswered}</div>
-              <div className="text-sm text-muted-foreground">Answered</div>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="text-3xl font-bold text-foreground">{data.percentage}%</div>
-              <div className="text-sm text-muted-foreground">Score</div>
-            </div>
-          </div>
 
-          <div className="h-4 bg-muted rounded-full overflow-hidden">
+            <h1 className="mb-1 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+              Score screen
+            </h1>
+            <p className="mb-1 text-lg font-black text-foreground">{headerName}</p>
+            <p className="mb-8 text-sm font-semibold text-muted-foreground">
+              {email}
+            </p>
+
             <div
               className={cn(
-                "h-full transition-all duration-500 rounded-full",
-                data.percentage >= 70 ? "bg-green-500" : data.percentage >= 50 ? "bg-yellow-500" : "bg-red-500"
+                "mx-auto mb-4 flex h-36 w-36 items-center justify-center rounded-full sm:h-44 sm:w-44",
+                ringClass,
               )}
-              style={{ width: `${data.percentage}%` }}
-            />
+            >
+              <div className="flex h-full w-full flex-col items-center justify-center rounded-full border-4 border-card bg-card">
+                <span
+                  className={cn(
+                    "font-black tabular-nums sm:text-7xl text-6xl",
+                    textClass,
+                  )}
+                >
+                  {grade}
+                </span>
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Rank
+                </span>
+              </div>
+            </div>
+
+            <p className="mb-8 text-lg font-black text-foreground">{message}</p>
+
+            <div className="mb-8 grid grid-cols-3 gap-2 sm:gap-4">
+              <div className="rounded-2xl border-4 border-success/35 bg-success/10 p-3 text-center sm:p-4">
+                <Target className="mx-auto mb-1 h-5 w-5 text-success" />
+                <div className="text-2xl font-black tabular-nums text-foreground sm:text-3xl">
+                  {data.correctCount}
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground sm:text-xs">
+                  Correct
+                </div>
+              </div>
+              <div className="rounded-2xl border-4 border-chart-2/35 bg-chart-2/10 p-3 text-center sm:p-4">
+                <Zap className="mx-auto mb-1 h-5 w-5 text-chart-2" />
+                <div className="text-2xl font-black tabular-nums text-foreground sm:text-3xl">
+                  {data.totalAnswered}
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground sm:text-xs">
+                  Answered
+                </div>
+              </div>
+              <div className="rounded-2xl border-4 border-primary/35 bg-primary/10 p-3 text-center sm:p-4">
+                <Trophy className="mx-auto mb-1 h-5 w-5 text-primary" />
+                <div className="text-2xl font-black tabular-nums text-foreground sm:text-3xl">
+                  {data.percentage}%
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground sm:text-xs">
+                  Score
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-1 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <span>Power meter</span>
+              <span>{data.percentage}%</span>
+            </div>
+            <div className="h-5 overflow-hidden rounded-full border-2 border-border bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-700",
+                  data.percentage >= 70
+                    ? "bg-linear-to-r from-chart-3 to-primary"
+                    : data.percentage >= 50
+                      ? "bg-linear-to-r from-chart-4 to-chart-1"
+                      : "bg-destructive",
+                )}
+                style={{ width: `${data.percentage}%` }}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Answer Review</h2>
-          <div className="space-y-4">
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[1.75rem] border-4 border-chart-2/30 bg-card p-5 shadow-lg sm:p-6",
+            "shadow-[0_10px_0_0_oklch(0.58_0.2_252_/_0.1)]",
+          )}
+        >
+          <div className="mb-4 flex items-center gap-2">
+            <span className="rounded-lg bg-chart-2/15 px-2 py-1 font-black text-[10px] uppercase tracking-widest text-chart-2">
+              Replay
+            </span>
+            <h2 className="text-lg font-black tracking-tight text-foreground sm:text-xl">
+              Answer review
+            </h2>
+          </div>
+
+          <div className="space-y-3">
             {data.answers && data.answers.length > 0 ? (
               data.answers
                 .sort((a, b) => a.questionIndex - b.questionIndex)
-                .map((answer, index) => {
-                  const isUnanswered = !answer.answered
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={cn(
-                        "p-4 rounded-lg border-2",
-                        answer.isCorrect && answer.answered
-                          ? "border-green-500/30 bg-green-500/5"
-                          : !answer.answered
-                          ? "border-gray-400/30 bg-gray-400/5"
-                          : "border-red-500/30 bg-red-500/5"
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5",
-                            answer.isCorrect && answer.answered
-                              ? "bg-green-500"
-                              : !answer.answered
-                              ? "bg-gray-400"
-                              : "bg-red-500"
-                          )}
-                        >
-                          {answer.isCorrect && answer.answered ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : !answer.answered ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm md:text-base mb-2">
-                            Q{answer.questionIndex + 1}: {answer.question}
-                          </p>
-                          {answer.answered ? (
-                            <>
-                              <p className="text-sm text-muted-foreground">
-                                Your answer: <span className="font-medium">{String.fromCharCode(65 + answer.selectedOption!)} - {answer.options?.[answer.selectedOption!]}</span>
+                .map((answer, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "rounded-2xl border-4 p-4",
+                      answer.isCorrect && answer.answered
+                        ? "border-success/45 bg-success/10"
+                        : !answer.answered
+                          ? "border-muted-foreground/25 bg-muted/40"
+                          : "border-destructive/40 bg-destructive/10",
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black text-white",
+                          answer.isCorrect && answer.answered
+                            ? "bg-success"
+                            : !answer.answered
+                              ? "bg-muted-foreground"
+                              : "bg-destructive",
+                        )}
+                      >
+                        {answer.questionIndex + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-2 text-sm font-bold leading-snug text-foreground md:text-base">
+                          {answer.question}
+                        </p>
+                        {answer.answered ? (
+                          <>
+                            <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
+                              Your pick:{" "}
+                              <span className="font-black text-foreground">
+                                {String.fromCharCode(65 + answer.selectedOption!)}{" "}
+                                — {answer.options?.[answer.selectedOption!]}
+                              </span>
+                            </p>
+                            {!answer.isCorrect && (
+                              <p className="mt-1 text-xs font-bold text-success sm:text-sm">
+                                Right answer:{" "}
+                                <span className="font-black">
+                                  {String.fromCharCode(
+                                    65 + answer.correctOption,
+                                  )}{" "}
+                                  — {answer.options?.[answer.correctOption]}
+                                </span>
                               </p>
-                              {!answer.isCorrect && (
-                                <p className="text-sm text-green-600 mt-1">
-                                  Correct answer: <span className="font-medium">{String.fromCharCode(65 + answer.correctOption)} - {answer.options?.[answer.correctOption]}</span>
-                                </p>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-sm text-gray-600 font-medium mb-1">
-                                Not answered
-                              </p>
-                              <p className="text-sm text-green-600">
-                                Correct answer: <span className="font-medium">{String.fromCharCode(65 + answer.correctOption)} - {answer.options?.[answer.correctOption]}</span>
-                              </p>
-                            </>
-                          )}
-                        </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="mb-1 text-xs font-black uppercase tracking-wide text-muted-foreground">
+                              Skipped
+                            </p>
+                            <p className="text-xs font-bold text-success sm:text-sm">
+                              Right answer:{" "}
+                              <span className="font-black">
+                                {String.fromCharCode(
+                                  65 + answer.correctOption,
+                                )}{" "}
+                                — {answer.options?.[answer.correctOption]}
+                              </span>
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
-                  )
-                })
+                  </div>
+                ))
             ) : (
-              <p className="text-muted-foreground text-center py-4">No answers recorded</p>
+              <p className="py-6 text-center text-sm font-semibold text-muted-foreground">
+                No answers recorded
+              </p>
             )}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

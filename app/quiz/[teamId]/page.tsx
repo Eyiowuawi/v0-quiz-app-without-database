@@ -1,9 +1,10 @@
 import { QuizClient } from "@/components/quiz-client";
 
-export default function TeamQuizPage({
+export default async function TeamQuizPage({
   params,
 }: {
-  params: { teamId: string };
+  params: Promise<{ teamId: string }>;
 }) {
-  return <QuizClient teamId={params.teamId} />;
+  const { teamId } = await params;
+  return <QuizClient teamId={teamId} />;
 }

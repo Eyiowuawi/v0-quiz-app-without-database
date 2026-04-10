@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redis, KEYS, User } from "@/lib/redis";
+import { normalizeParticipantName } from "@/lib/participant-name";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, teamId } = await request.json();
+    const body = await request.json();
+    const { email, teamId } = body;
+    const displayName = normalizeParticipantName(body.name);
 
     if (!email || !email.includes("@")) {
       return NextResponse.json(
         { error: "Valid email required" },
+        { status: 400 },
+      );
+    }
+
+    if (!displayName || displayName.length < 2) {
+      return NextResponse.json(
+        { error: "Please enter your name (at least 2 characters)" },
         { status: 400 },
       );
     }
@@ -21,41 +31,46 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Use atomic check-and-set pattern to prevent race conditions
-    // This handles concurrent registrations safely
     let retries = 5;
     let userAdded = false;
 
     while (retries > 0 && !userAdded) {
       try {
-        // Get current users list (atomic read)
         const currentUsers =
           (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
 
-        // Check if user already exists
-        const userExists = currentUsers.some(
+        const existingIndex = currentUsers.findIndex(
           (u) => u.email === normalizedEmail,
         );
 
-        if (userExists) {
-          // User already exists, that's fine - just create session
+        if (existingIndex >= 0) {
+          const next = [...currentUsers];
+          next[existingIndex] = {
+            ...next[existingIndex],
+            name: displayName,
+          };
+          await redis.set(KEYS.USERS(teamId), next);
           userAdded = true;
           break;
         }
 
-        // Double-check pattern: read again right before write
         const doubleCheckUsers =
           (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
 
-        if (doubleCheckUsers.some((u) => u.email === normalizedEmail)) {
-          // User was added between our reads, that's fine
+        const dupIndex = doubleCheckUsers.findIndex(
+          (u) => u.email === normalizedEmail,
+        );
+        if (dupIndex >= 0) {
+          const next = [...doubleCheckUsers];
+          next[dupIndex] = { ...next[dupIndex], name: displayName };
+          await redis.set(KEYS.USERS(teamId), next);
           userAdded = true;
           break;
         }
 
-        // Add new user (critical section)
         const newUser: User = {
           email: normalizedEmail,
+          name: displayName,
           joinedAt: Date.now(),
         };
 
@@ -66,10 +81,7 @@ export async function POST(request: NextRequest) {
         retries--;
         if (retries === 0) {
           console.error("Failed to add user after retries:", error);
-          // Don't fail completely - try to create session anyway
-          // User might have been added by another request
         } else {
-          // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
           await new Promise((resolve) =>
             setTimeout(resolve, 10 * Math.pow(2, 5 - retries)),
           );
@@ -77,16 +89,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create session
     await redis.set(
       KEYS.USER_SESSION(teamId, normalizedEmail),
-      { email: normalizedEmail },
+      { email: normalizedEmail, name: displayName },
       { ex: 86400 },
-    ); // 24 hour expiry
+    );
 
-    // Check if user was newly added (for response)
-    // If userAdded is true, we successfully added them in this request
-    // If false, they already existed or we couldn't determine
     const finalUsers = (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
     const userNowExists = finalUsers.some((u) => u.email === normalizedEmail);
     const isNewUser = userAdded && userNowExists;
@@ -94,6 +102,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       email: normalizedEmail,
+      name: displayName,
       isNewUser: isNewUser,
     });
   } catch (error) {
@@ -114,13 +123,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ authenticated: false });
     }
 
-    const session = await redis.get(
-      KEYS.USER_SESSION(teamId, email.toLowerCase()),
+    const normalized = email.toLowerCase().trim();
+    const session = await redis.get<{ email: string; name?: string }>(
+      KEYS.USER_SESSION(teamId, normalized),
     );
 
     return NextResponse.json({
       authenticated: !!session,
-      email: session ? email.toLowerCase() : null,
+      email: session ? normalized : null,
+      name: session?.name?.trim() || null,
     });
   } catch (error) {
     console.error("Session check error:", error);
