@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState } from '@/lib/redis'
 import { quizQuestions, Question } from '@/lib/quiz-data'
-
-interface StoredAnswer {
-  email: string
-  questionIndex: number
-  selectedOption: number
-  isCorrect: boolean
-  answeredAt: number
-}
+import {
+  atomicSubmitAnswer,
+  type AnswerPayload,
+} from '@/lib/atomic-quiz-answer'
 
 // Helper to get questions (custom or default)
 async function getQuestions(teamId: string): Promise<Question[]> {
@@ -39,19 +35,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid question' }, { status: 400 })
     }
 
-    // One submission per user per question — no changes after lock-in
-    const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, questionIndex)
-    const already = await redis.get<StoredAnswer>(answerKey)
-    if (already) {
-      return NextResponse.json(
-        { error: 'Answer already submitted for this question' },
-        { status: 409 },
-      )
-    }
-
     const isCorrect = selectedOption === question.correctOption
 
-    const answer: StoredAnswer = {
+    const answer: AnswerPayload = {
       email: normalizedEmail,
       questionIndex,
       selectedOption,
@@ -59,20 +45,19 @@ export async function POST(request: NextRequest) {
       answeredAt: Date.now(),
     }
 
-    await redis.set(answerKey, answer)
-
-    // Also update the main answers list for leaderboard calculations
-    const allAnswers = await redis.get<StoredAnswer[]>(KEYS.ANSWERS(teamId)) || []
-    const existingIdx = allAnswers.findIndex(
-      a => a.email === normalizedEmail && a.questionIndex === questionIndex
-    )
-    
-    if (existingIdx >= 0) {
-      allAnswers[existingIdx] = answer
-    } else {
-      allAnswers.push(answer)
+    const outcome = await atomicSubmitAnswer(teamId, normalizedEmail, answer)
+    if (outcome === 'conflict') {
+      return NextResponse.json(
+        { error: 'Answer already submitted for this question' },
+        { status: 409 },
+      )
     }
-    await redis.set(KEYS.ANSWERS(teamId), allAnswers)
+    if (outcome === 'failed') {
+      return NextResponse.json(
+        { error: 'Could not save answer. Please try again.' },
+        { status: 503 },
+      )
+    }
 
     // Don't return correct answer - just confirm submission
     return NextResponse.json({ success: true })
@@ -99,7 +84,7 @@ export async function GET(request: NextRequest) {
     if (questionIndexParam !== null) {
       const questionIndex = parseInt(questionIndexParam, 10)
       const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, questionIndex)
-      const answer = await redis.get<StoredAnswer>(answerKey)
+      const answer = await redis.get<AnswerPayload>(answerKey)
       
       if (answer) {
         return NextResponse.json({
@@ -118,7 +103,7 @@ export async function GET(request: NextRequest) {
     
     for (let i = 0; i < questions.length; i++) {
       const answerKey = KEYS.USER_ANSWER(teamId, normalizedEmail, i)
-      const answer = await redis.get<StoredAnswer>(answerKey)
+      const answer = await redis.get<AnswerPayload>(answerKey)
       if (answer) {
         userAnswers.push({
           questionIndex: answer.questionIndex,

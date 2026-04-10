@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { redis, KEYS, User } from "@/lib/redis";
+import { redis, KEYS } from "@/lib/redis";
 import { normalizeParticipantName } from "@/lib/participant-name";
+import { atomicUpsertParticipant } from "@/lib/participants";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,63 +31,20 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const joinedAt = Date.now();
 
-    let retries = 5;
-    let userAdded = false;
+    const upsert = await atomicUpsertParticipant(
+      teamId,
+      normalizedEmail,
+      displayName,
+      joinedAt,
+    );
 
-    while (retries > 0 && !userAdded) {
-      try {
-        const currentUsers =
-          (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
-
-        const existingIndex = currentUsers.findIndex(
-          (u) => u.email === normalizedEmail,
-        );
-
-        if (existingIndex >= 0) {
-          const next = [...currentUsers];
-          next[existingIndex] = {
-            ...next[existingIndex],
-            name: displayName,
-          };
-          await redis.set(KEYS.USERS(teamId), next);
-          userAdded = true;
-          break;
-        }
-
-        const doubleCheckUsers =
-          (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
-
-        const dupIndex = doubleCheckUsers.findIndex(
-          (u) => u.email === normalizedEmail,
-        );
-        if (dupIndex >= 0) {
-          const next = [...doubleCheckUsers];
-          next[dupIndex] = { ...next[dupIndex], name: displayName };
-          await redis.set(KEYS.USERS(teamId), next);
-          userAdded = true;
-          break;
-        }
-
-        const newUser: User = {
-          email: normalizedEmail,
-          name: displayName,
-          joinedAt: Date.now(),
-        };
-
-        await redis.set(KEYS.USERS(teamId), [...doubleCheckUsers, newUser]);
-        userAdded = true;
-        break;
-      } catch (error) {
-        retries--;
-        if (retries === 0) {
-          console.error("Failed to add user after retries:", error);
-        } else {
-          await new Promise((resolve) =>
-            setTimeout(resolve, 10 * Math.pow(2, 5 - retries)),
-          );
-        }
-      }
+    if (!upsert.ok) {
+      return NextResponse.json(
+        { error: "Could not register right now. Please try again." },
+        { status: 503 },
+      );
     }
 
     await redis.set(
@@ -95,15 +53,11 @@ export async function POST(request: NextRequest) {
       { ex: 86400 },
     );
 
-    const finalUsers = (await redis.get<User[]>(KEYS.USERS(teamId))) || [];
-    const userNowExists = finalUsers.some((u) => u.email === normalizedEmail);
-    const isNewUser = userAdded && userNowExists;
-
     return NextResponse.json({
       success: true,
       email: normalizedEmail,
       name: displayName,
-      isNewUser: isNewUser,
+      isNewUser: upsert.wasNew,
     });
   } catch (error) {
     console.error("Auth error:", error);
