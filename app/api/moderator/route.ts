@@ -4,8 +4,10 @@ import { quizQuestions, Question } from '@/lib/quiz-data'
 import {
   atomicApplyModeratorQuizState,
   atomicClearTeamQuizData,
+  atomicExpireTimerIfNeeded,
   atomicResetModeratorQuiz,
 } from '@/lib/atomic-moderator-quiz'
+import { markTeamRegistered } from '@/lib/team-registry'
 
 async function verifyModerator(request: NextRequest): Promise<{ teamId: string; email: string } | null> {
   const sessionId = request.headers.get('x-session-id')
@@ -45,9 +47,15 @@ export async function GET(request: NextRequest) {
 
   try {
     const { teamId } = moderator
-    const state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
-    const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
+    await markTeamRegistered(teamId)
     const questions = await getQuestions(teamId)
+    let state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
+    if (!state) {
+      await redis.setnx(KEYS.QUIZ_STATE(teamId), DEFAULT_STATE)
+      state = (await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))) ?? DEFAULT_STATE
+    }
+    state = await atomicExpireTimerIfNeeded(teamId, questions.length, Date.now())
+    const users = await redis.get<User[]>(KEYS.USERS(teamId)) || []
 
     return NextResponse.json({
       state: state || DEFAULT_STATE,

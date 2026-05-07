@@ -38,15 +38,15 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
       ? `/api/quiz/results?email=${encodeURIComponent(email)}&teamId=${teamId}`
       : null,
     fetcher,
-    { refreshInterval: 3000 },
+    { refreshInterval: 3000 }
   );
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center">
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-grid">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-14 w-14 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="font-black text-sm uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-zinc-500">
             Loading scores…
           </p>
         </div>
@@ -56,8 +56,8 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
 
   if (!data) {
     return (
-      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center p-4">
-        <p className="text-center font-semibold text-muted-foreground">
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-grid p-4">
+        <p className="text-center font-semibold text-zinc-400">
           Failed to load results
         </p>
       </div>
@@ -66,24 +66,24 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
 
   if (!data.resultsAvailable) {
     return (
-      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center p-4">
-        <div className="max-w-md text-center">
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-grid p-4">
+        <div className="glass-card max-w-md rounded-4xl border border-white/10 p-8 text-center">
           <div className="relative mx-auto mb-6 flex h-28 w-28 items-center justify-center">
             <div
-              className="absolute inset-0 animate-ping rounded-full border-4 border-chart-4/30 opacity-40"
+              className="absolute inset-0 animate-ping rounded-full border border-indigo-500/30 opacity-40"
               style={{ animationDuration: "2s" }}
             />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-chart-4/40 bg-linear-to-br from-chart-4/25 to-primary/15">
-              <Trophy className="h-12 w-12 text-primary" strokeWidth={2.2} />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border border-indigo-500/30 bg-indigo-500/10">
+              <Trophy className="h-12 w-12 text-indigo-400" strokeWidth={2.2} />
             </div>
           </div>
-          <p className="mb-2 font-black text-xs uppercase tracking-[0.35em] text-chart-2">
+          <p className="mb-2 font-black text-xs uppercase tracking-[0.35em] text-indigo-400">
             Almost there
           </p>
-          <h2 className="mb-2 text-2xl font-black text-foreground">
+          <h2 className="mb-2 font-display text-2xl font-black text-foreground">
             Waiting for results
           </h2>
-          <p className="text-sm font-semibold text-muted-foreground">
+          <p className="text-sm font-semibold text-zinc-400">
             {data.message ||
               "Your host will unlock the scoreboard soon. Keep this tab open!"}
           </p>
@@ -112,24 +112,21 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
     if (percentage >= 70)
       return {
         grade: "A",
-        ringClass:
-          "bg-linear-to-br from-chart-2 to-chart-5 p-1 shadow-lg",
+        ringClass: "bg-linear-to-br from-chart-2 to-chart-5 p-1 shadow-lg",
         textClass: "text-chart-2",
         message: "Great game!",
       };
     if (percentage >= 60)
       return {
         grade: "B",
-        ringClass:
-          "bg-linear-to-br from-chart-5 to-chart-3 p-1 shadow-lg",
+        ringClass: "bg-linear-to-br from-chart-5 to-chart-3 p-1 shadow-lg",
         textClass: "text-chart-5",
         message: "Nice work!",
       };
     if (percentage >= 50)
       return {
         grade: "C",
-        ringClass:
-          "bg-linear-to-br from-chart-4 to-chart-3 p-1 shadow-lg",
+        ringClass: "bg-linear-to-br from-chart-4 to-chart-3 p-1 shadow-lg",
         textClass: "text-chart-4",
         message: "Keep leveling up!",
       };
@@ -145,45 +142,44 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
   const headerName = data.displayName?.trim() || displayName;
 
   return (
-    <div className="min-h-[calc(100vh-56px)] px-3 py-6 sm:px-4 sm:py-8">
+    <div className="min-h-[calc(100vh-56px)] bg-grid px-3 py-6 sm:px-4 sm:py-8">
       <div className="relative mx-auto max-w-2xl">
-        <div className="pointer-events-none absolute -top-6 left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-chart-4/30 blur-3xl" />
+        <div className="pointer-events-none absolute -top-6 left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-indigo-600/20 blur-3xl" />
 
-        <div
-          className={cn(
-            "relative mb-6 overflow-hidden rounded-[1.75rem] border-4 border-primary/35 bg-card p-6 shadow-xl sm:p-8",
-            "shadow-[0_14px_0_0_oklch(0.62_0.21_42_/_0.12)]",
-          )}
-        >
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-2 bg-linear-to-r from-chart-2 via-primary to-chart-5 opacity-90" />
+        <div className="glass-card relative mb-6 overflow-hidden rounded-4xl border border-white/10 p-6 sm:p-8">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-90" />
 
           <div className="relative text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-success/40 bg-success/15 px-4 py-1.5">
-              <Crown className="h-4 w-4 text-success" />
-              <span className="font-black text-xs uppercase tracking-[0.25em] text-success">
-                Run complete
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-4 py-1.5">
+              <Crown className="h-4 w-4 text-indigo-300" />
+              <span className="font-black text-xs uppercase tracking-[0.25em] text-indigo-300">
+                Champion report
               </span>
             </div>
 
-            <h1 className="mb-1 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-              Score screen
+            <h1 className="mb-1 font-display text-2xl font-black uppercase italic tracking-tighter text-foreground sm:text-3xl">
+              Victory report
             </h1>
-            <p className="mb-1 text-lg font-black text-foreground">{headerName}</p>
-            <p className="mb-8 text-sm font-semibold text-muted-foreground">
-              {email}
+            <p className="mb-1 text-lg font-black text-foreground">
+              {headerName}
+            </p>
+            <p className="mb-2 text-sm font-semibold text-zinc-400">{email}</p>
+            <p className="mb-6 text-sm text-zinc-500">
+              Your final stats are live. Review where you scored big and what to
+              improve next time.
             </p>
 
             <div
               className={cn(
                 "mx-auto mb-4 flex h-36 w-36 items-center justify-center rounded-full sm:h-44 sm:w-44",
-                ringClass,
+                ringClass
               )}
             >
               <div className="flex h-full w-full flex-col items-center justify-center rounded-full border-4 border-card bg-card">
                 <span
                   className={cn(
                     "font-black tabular-nums sm:text-7xl text-6xl",
-                    textClass,
+                    textClass
                   )}
                 >
                   {grade}
@@ -227,7 +223,7 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
             </div>
 
             <div className="mb-1 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              <span>Power meter</span>
+              <span>Momentum</span>
               <span>{data.percentage}%</span>
             </div>
             <div className="h-5 overflow-hidden rounded-full border-2 border-border bg-muted">
@@ -237,8 +233,8 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
                   data.percentage >= 70
                     ? "bg-linear-to-r from-chart-3 to-primary"
                     : data.percentage >= 50
-                      ? "bg-linear-to-r from-chart-4 to-chart-1"
-                      : "bg-destructive",
+                    ? "bg-linear-to-r from-chart-4 to-chart-1"
+                    : "bg-destructive"
                 )}
                 style={{ width: `${data.percentage}%` }}
               />
@@ -246,15 +242,10 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
           </div>
         </div>
 
-        <div
-          className={cn(
-            "relative overflow-hidden rounded-[1.75rem] border-4 border-chart-2/30 bg-card p-5 shadow-lg sm:p-6",
-            "shadow-[0_10px_0_0_oklch(0.58_0.2_252_/_0.1)]",
-          )}
-        >
+        <div className="glass-card relative overflow-hidden rounded-4xl border border-white/10 p-5 sm:p-6">
           <div className="mb-4 flex items-center gap-2">
-            <span className="rounded-lg bg-chart-2/15 px-2 py-1 font-black text-[10px] uppercase tracking-widest text-chart-2">
-              Replay
+            <span className="rounded-lg bg-indigo-500/15 px-2 py-1 font-black text-[10px] uppercase tracking-widest text-indigo-400">
+              Review
             </span>
             <h2 className="text-lg font-black tracking-tight text-foreground sm:text-xl">
               Answer review
@@ -273,8 +264,8 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
                       answer.isCorrect && answer.answered
                         ? "border-success/45 bg-success/10"
                         : !answer.answered
-                          ? "border-muted-foreground/25 bg-muted/40"
-                          : "border-destructive/40 bg-destructive/10",
+                        ? "border-muted-foreground/25 bg-muted/40"
+                        : "border-destructive/40 bg-destructive/10"
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -284,8 +275,8 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
                           answer.isCorrect && answer.answered
                             ? "bg-success"
                             : !answer.answered
-                              ? "bg-muted-foreground"
-                              : "bg-destructive",
+                            ? "bg-muted-foreground"
+                            : "bg-destructive"
                         )}
                       >
                         {answer.questionIndex + 1}
@@ -299,7 +290,9 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
                             <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                               Your pick:{" "}
                               <span className="font-black text-foreground">
-                                {String.fromCharCode(65 + answer.selectedOption!)}{" "}
+                                {String.fromCharCode(
+                                  65 + answer.selectedOption!
+                                )}{" "}
                                 — {answer.options?.[answer.selectedOption!]}
                               </span>
                             </p>
@@ -308,7 +301,7 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
                                 Right answer:{" "}
                                 <span className="font-black">
                                   {String.fromCharCode(
-                                    65 + answer.correctOption,
+                                    65 + answer.correctOption
                                   )}{" "}
                                   — {answer.options?.[answer.correctOption]}
                                 </span>
@@ -323,9 +316,7 @@ export function Scorecard({ email, displayName, teamId }: ScorecardProps) {
                             <p className="text-xs font-bold text-success sm:text-sm">
                               Right answer:{" "}
                               <span className="font-black">
-                                {String.fromCharCode(
-                                  65 + answer.correctOption,
-                                )}{" "}
+                                {String.fromCharCode(65 + answer.correctOption)}{" "}
                                 — {answer.options?.[answer.correctOption]}
                               </span>
                             </p>

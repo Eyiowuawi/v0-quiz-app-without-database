@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redis, KEYS, Moderator, ModeratorSession } from "@/lib/redis";
 import { randomBytes } from "crypto";
-
-// Simple password hashing (use bcrypt in production)
-function hashPassword(password: string): string {
-  // This is a simple hash - use bcrypt or similar in production
-  return Buffer.from(password).toString("base64");
-}
-
-function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash;
-}
+import { hashPassword, verifyPasswordWithOptionalUpgrade } from "@/lib/password";
+import { markTeamRegistered } from "@/lib/team-registry";
+import { clientIp, moderatorAuthRatelimit } from "@/lib/rate-limit";
 
 function generateTeamId(): string {
   return randomBytes(8).toString("hex");
@@ -23,6 +16,15 @@ function generateSessionId(): string {
 // Register new moderator
 export async function POST(request: NextRequest) {
   try {
+    const ip = clientIp(request);
+    const { success } = await moderatorAuthRatelimit.limit(`reg:${ip}`);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many attempts. Try again in a minute." },
+        { status: 429 },
+      );
+    }
+
     const { email, password, name } = await request.json();
 
     if (!email || !password || !name) {
@@ -48,13 +50,10 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Use atomic check-and-set pattern to prevent race conditions
-    // Try to set moderator with NX (only if not exists) - this is atomic
     let retries = 5;
     let teamId: string | null = null;
 
     while (retries > 0) {
-      // Check if moderator already exists (atomic read)
       const existingModerator = await redis.get<Moderator>(
         KEYS.MODERATOR(normalizedEmail),
       );
@@ -66,9 +65,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Generate unique teamId
       teamId = generateTeamId();
-      const passwordHash = hashPassword(password);
+      const passwordHash = await hashPassword(password);
 
       const moderator: Moderator = {
         email: normalizedEmail,
@@ -78,9 +76,7 @@ export async function POST(request: NextRequest) {
         createdAt: Date.now(),
       };
 
-      // Try to save - if it fails due to race condition, retry
       try {
-        // Check again right before setting (double-check pattern)
         const doubleCheck = await redis.get<Moderator>(
           KEYS.MODERATOR(normalizedEmail),
         );
@@ -92,10 +88,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Save moderator (this is the critical section)
         await redis.set(KEYS.MODERATOR(normalizedEmail), moderator);
-
-        // If we get here, we successfully created the moderator
         break;
       } catch (error) {
         retries--;
@@ -103,7 +96,6 @@ export async function POST(request: NextRequest) {
           console.error("Failed to register moderator after retries:", error);
           throw error;
         }
-        // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
         await new Promise((resolve) =>
           setTimeout(resolve, 10 * Math.pow(2, 5 - retries)),
         );
@@ -117,7 +109,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Add to all moderators list with retry logic
+    await markTeamRegistered(teamId);
+
     let listRetries = 3;
     while (listRetries > 0) {
       try {
@@ -132,20 +125,18 @@ export async function POST(request: NextRequest) {
         listRetries--;
         if (listRetries === 0) {
           console.error("Failed to update moderators list:", error);
-          // Don't fail registration if list update fails
         } else {
           await new Promise((resolve) => setTimeout(resolve, 20));
         }
       }
     }
 
-    // Create session
     const sessionId = generateSessionId();
     const session: ModeratorSession = {
       sessionId,
       email: normalizedEmail,
       teamId,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
     };
 
     await redis.set(KEYS.MODERATOR_SESSION(sessionId), session);
@@ -166,6 +157,15 @@ export async function POST(request: NextRequest) {
 // Login moderator
 export async function PUT(request: NextRequest) {
   try {
+    const ip = clientIp(request);
+    const { success } = await moderatorAuthRatelimit.limit(`login:${ip}`);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many attempts. Try again in a minute." },
+        { status: 429 },
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -177,7 +177,6 @@ export async function PUT(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Get moderator
     const moderator = await redis.get<Moderator>(
       KEYS.MODERATOR(normalizedEmail),
     );
@@ -189,21 +188,33 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verify password
-    if (!verifyPassword(password, moderator.passwordHash)) {
+    const { ok, upgradedHash } = await verifyPasswordWithOptionalUpgrade(
+      password,
+      moderator.passwordHash,
+    );
+
+    if (!ok) {
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 },
       );
     }
 
-    // Create session
+    if (upgradedHash) {
+      await redis.set(KEYS.MODERATOR(normalizedEmail), {
+        ...moderator,
+        passwordHash: upgradedHash,
+      });
+    }
+
+    await markTeamRegistered(moderator.teamId);
+
     const sessionId = generateSessionId();
     const session: ModeratorSession = {
       sessionId,
       email: normalizedEmail,
       teamId: moderator.teamId,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
     };
 
     await redis.set(KEYS.MODERATOR_SESSION(sessionId), session);

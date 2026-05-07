@@ -1,4 +1,5 @@
 import { redis, KEYS, type QuizState } from "@/lib/redis";
+import { SERVER_QUIZ_TIMER_GRACE_SEC } from "@/lib/quiz-scoring";
 
 const APPLY_MODERATOR_STATE_LUA = `
 local key = KEYS[1]
@@ -93,6 +94,56 @@ redis.call('SET', key, cjson.encode(state))
 return cjson.encode({ ok = true, state = state })
 `;
 
+/** If timer mode is active and server time passed duration, advance one step (atomic). */
+const TIMER_EXPIRE_IF_NEEDED_LUA = `
+local key = KEYS[1]
+local qc = tonumber(ARGV[1]) or 0
+local now = tonumber(ARGV[2]) or 0
+local grace = tonumber(ARGV[3]) or 45
+
+local function load_state()
+  local raw = redis.call('GET', key)
+  if type(raw) ~= 'string' or #raw == 0 then
+    return {
+      currentQuestionIndex = -1,
+      isActive = false,
+      showResults = false,
+      timerMode = false,
+      timerDuration = 30
+    }
+  end
+  local ok, s = pcall(cjson.decode, raw)
+  if ok and type(s) == 'table' then return s end
+  return {
+    currentQuestionIndex = -1,
+    isActive = false,
+    showResults = false,
+    timerMode = false,
+    timerDuration = 30
+  }
+end
+
+local state = load_state()
+
+if state.timerMode and state.isActive and state.currentQuestionIndex >= 0 and state.questionStartTime then
+  local dur = tonumber(state.timerDuration) or 30
+  local st = tonumber(state.questionStartTime) or 0
+  if (now - st) >= (dur + grace) * 1000 then
+    if state.currentQuestionIndex < qc - 1 then
+      state.currentQuestionIndex = state.currentQuestionIndex + 1
+      state.isActive = true
+      state.questionStartTime = now
+    else
+      state.isActive = false
+      state.showResults = true
+    end
+    redis.call('SET', key, cjson.encode(state))
+  end
+end
+
+return cjson.encode({ ok = true, state = state })
+`;
+
 const RESET_QUIZ_LUA = `
 local stateKey = KEYS[1]
 local answersKey = KEYS[2]
@@ -170,8 +221,49 @@ type ApplyPayload = {
 };
 
 function parseEvalJson(raw: unknown): unknown {
-  const text = typeof raw === "string" ? raw : String(raw);
-  return JSON.parse(text);
+  if (typeof raw === "string") {
+    return JSON.parse(raw);
+  }
+  if (raw !== null && typeof raw === "object") {
+    return raw;
+  }
+  return JSON.parse(String(raw));
+}
+
+export async function atomicExpireTimerIfNeeded(
+  teamId: string,
+  questionCount: number,
+  now: number,
+): Promise<QuizState> {
+  const key = KEYS.QUIZ_STATE(teamId);
+  const fallback = async (): Promise<QuizState> => {
+    const s = await redis.get<QuizState>(key);
+    return (
+      s ?? {
+        currentQuestionIndex: -1,
+        isActive: false,
+        showResults: false,
+        timerMode: false,
+        timerDuration: 30,
+      }
+    );
+  };
+
+  try {
+    const raw = await redis.eval(TIMER_EXPIRE_IF_NEEDED_LUA, [key], [
+      String(questionCount),
+      String(now),
+      String(SERVER_QUIZ_TIMER_GRACE_SEC),
+    ]);
+    const parsed = parseEvalJson(raw) as { ok?: boolean; state?: QuizState };
+    if (!parsed.ok || !parsed.state) {
+      return fallback();
+    }
+    return parsed.state;
+  } catch (e) {
+    console.error("atomicExpireTimerIfNeeded:", e);
+    return fallback();
+  }
 }
 
 export async function atomicApplyModeratorQuizState(

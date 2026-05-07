@@ -14,6 +14,12 @@ interface LoginFormProps {
   teamId?: string | null;
 }
 
+function formatRoomCode(teamId: string) {
+  const code = teamId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (code.length <= 4) return code || "----";
+  return code.match(/.{1,4}/g)?.join(" ") ?? code;
+}
+
 export function LoginForm({ onLogin, teamId }: LoginFormProps) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,10 +66,10 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
         localStorage.setItem(`quiz-email-${effectiveTeamId}`, data.email);
         localStorage.setItem(
           `quiz-name-${effectiveTeamId}`,
-          data.name || displayName.trim(),
+          data.name || displayName.trim()
         );
       }
-      toast.success(`You’re in, ${data.name || displayName.trim()}!`);
+      toast.success(`You're in, ${data.name || displayName.trim()}!`);
       onLogin(data.email, data.name || displayName.trim());
     } catch {
       const errorMsg = "Something went wrong. Please try again.";
@@ -81,60 +87,74 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="relative overflow-hidden bg-card border-4 border-primary/25 rounded-[1.75rem] p-8 shadow-xl shadow-[0_12px_0_0_oklch(0.62_0.21_42_/_0.12)]">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-chart-2/20 blur-2xl" />
-          <div className="text-center mb-8 relative">
-            <p className="mb-3 inline-block rounded-full border-2 border-chart-2/40 bg-chart-2/10 px-3 py-1 font-black text-[10px] uppercase tracking-[0.35em] text-chart-2">
+    <div className="relative flex min-h-screen items-center justify-center bg-background bg-grid p-4">
+      <div className="pointer-events-none absolute left-[10%] top-1/4 h-96 w-96 rounded-full bg-indigo-600/15 blur-[100px]" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-purple-600/15 blur-[100px]" />
+
+      <div className="relative w-full max-w-md">
+        <div className="glass-card relative overflow-hidden rounded-[2rem] p-8 sm:p-10">
+          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-indigo-600/10 blur-3xl" />
+          <div className="relative mb-8 text-center">
+            <p className="mb-4 inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-indigo-500">
               Player join
             </p>
-            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-primary/25 to-chart-2/25 flex items-center justify-center mx-auto mb-4 border-4 border-primary/30 shadow-inner">
-              <Users className="w-8 h-8 text-primary" strokeWidth={2.4} />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
+              <Users className="h-8 w-8" strokeWidth={2.4} />
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground mb-2">
-              Enter the game
+            <h1 className="mb-2 font-display text-3xl font-black uppercase italic tracking-tighter text-foreground">
+              Enter the arena
             </h1>
-            <p className="text-sm font-semibold text-muted-foreground">
+            <p className="text-sm font-medium text-muted-foreground">
               {teamId
-                ? "Add your name and school email so the host can see who's playing."
+                ? "Add your name and email so the host can identify you."
                 : "Enter your team ID, then your name and email to join."}
             </p>
           </div>
 
+          {effectiveTeamId && (
+            <div className="mb-6 rounded-[1.75rem] border border-border bg-indigo-500/5 p-4 text-center shadow-inner shadow-indigo-500/10">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-indigo-500">
+                Arena code
+              </p>
+              <p className="mt-2 text-2xl font-black tracking-[0.18em] text-foreground">
+                {formatRoomCode(effectiveTeamId)}
+              </p>
+            </div>
+          )}
+
           {!teamId && (
             <div className="mb-6 space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Team ID
               </label>
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  placeholder="Enter team ID"
+                  placeholder="Team ID"
                   value={manualTeamId}
                   onChange={(e) => setManualTeamId(e.target.value)}
-                  className="h-12 text-lg font-mono"
+                  className="h-12 font-mono text-base font-bold"
                   disabled={isLoading}
                 />
                 <Button
                   type="button"
                   onClick={handleEnterTeamId}
                   disabled={!manualTeamId.trim() || isLoading}
-                  className="h-12 px-6"
+                  className="h-12 shrink-0 rounded-2xl px-4"
                 >
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="h-5 w-5" />
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Get this from your moderator or use the quiz link
+                Paste the code from your moderator or quiz link.
               </p>
             </div>
           )}
 
           {effectiveTeamId && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
+            <form onSubmit={handleSubmit} className="relative space-y-5">
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   Your name
                 </label>
                 <Input
@@ -146,12 +166,12 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
                   minLength={2}
                   maxLength={80}
                   autoComplete="name"
-                  className="h-12 text-lg"
+                  className="h-14 text-lg font-bold"
                   disabled={isLoading}
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   Email
                 </label>
                 <Input
@@ -161,40 +181,39 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="h-12 text-lg"
+                  className="h-14 text-lg font-bold"
                   disabled={isLoading}
                 />
               </div>
 
               {error && (
-                <p className="text-destructive text-sm text-center">{error}</p>
+                <p className="text-center text-sm text-destructive">{error}</p>
               )}
 
               <Button
                 type="submit"
-                className="w-full h-12 text-lg font-medium"
+                className="h-14 w-full rounded-2xl text-lg font-black"
                 disabled={isLoading || !email || displayName.trim().length < 2}
               >
-                {isLoading ? "Joining..." : "Join Quiz"}
+                {isLoading ? "Joining…" : "Join quiz"}
               </Button>
             </form>
           )}
 
           {effectiveTeamId && (
-            <p className="text-xs text-muted-foreground text-center mt-6">
-              No password — your name and email are only used for this quiz
-              session.
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              No password — your details are only used for this quiz session.
             </p>
           )}
 
           {!teamId && (
-            <div className="mt-6 pt-6 border-t border-border">
+            <div className="mt-8 border-t border-border pt-6">
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-2xl font-bold"
                 onClick={() => router.push("/")}
               >
-                Back to Home
+                Back to home
               </Button>
             </div>
           )}

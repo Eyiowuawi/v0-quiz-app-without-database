@@ -5,9 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { LayoutDashboard } from "lucide-react";
 
 interface ModeratorAuthProps {
-  onAuth: (sessionId: string, teamId: string, email: string, name: string) => void;
+  onAuth: (
+    sessionId: string,
+    teamId: string,
+    email: string,
+    name: string,
+  ) => void;
 }
 
 export function ModeratorAuth({ onAuth }: ModeratorAuthProps) {
@@ -25,14 +31,10 @@ export function ModeratorAuth({ onAuth }: ModeratorAuthProps) {
     setIsLoading(true);
 
     try {
-      const url = isLogin
-        ? "/api/moderator/auth"
-        : "/api/moderator/auth";
+      const url = "/api/moderator/auth";
       const method = isLogin ? "PUT" : "POST";
 
-      const body = isLogin
-        ? { email, password }
-        : { email, password, name };
+      const body = isLogin ? { email, password } : { email, password, name };
 
       const res = await fetch(url, {
         method,
@@ -43,18 +45,22 @@ export function ModeratorAuth({ onAuth }: ModeratorAuthProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || `${isLogin ? "Login" : "Registration"} failed`);
-        toast.error(data.error || `${isLogin ? "Login" : "Registration"} failed`);
+        setError(
+          data.error || `${isLogin ? "Login" : "Registration"} failed`,
+        );
+        toast.error(
+          data.error || `${isLogin ? "Login" : "Registration"} failed`,
+        );
         return;
       }
 
       toast.success(
         isLogin
           ? `Welcome back, ${data.name}!`
-          : `Account created! Welcome, ${data.name}!`
+          : `Account created! Welcome, ${data.name}!`,
       );
       onAuth(data.sessionId, data.teamId, data.email, data.name);
-    } catch (err) {
+    } catch {
       const errorMsg = "Something went wrong. Please try again.";
       setError(errorMsg);
       toast.error(errorMsg);
@@ -64,80 +70,93 @@ export function ModeratorAuth({ onAuth }: ModeratorAuthProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-card border-2 border-border rounded-3xl p-8 shadow-xl shadow-chart-2/12">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              {isLogin ? "Moderator Login" : "Create Account"}
+    <div className="relative flex min-h-screen items-center justify-center bg-background bg-grid p-4">
+      <div className="pointer-events-none absolute left-0 top-1/3 h-72 w-72 rounded-full bg-indigo-600/15 blur-[100px]" />
+      <div className="relative w-full max-w-md">
+        <div className="glass-card rounded-[2rem] p-8 sm:p-10">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-600/25">
+              <LayoutDashboard className="h-7 w-7 text-white" />
+            </div>
+            <h1 className="font-display text-3xl font-black uppercase italic tracking-tighter text-foreground">
+              {isLogin ? "Moderator login" : "Create account"}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="mt-2 text-sm font-medium text-zinc-400">
               {isLogin
-                ? "Sign in to manage your quiz"
-                : "Register to create your quiz session"}
+                ? "Sign in to your QuizPulse console"
+                : "Register to host your first session"}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div>
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  Name
+                </label>
                 <Input
                   type="text"
-                  placeholder="Your Name"
+                  placeholder="Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required={!isLogin}
-                  className="h-12"
+                  className="h-12 font-bold"
                   disabled={isLoading}
                 />
               </div>
             )}
 
-            <div>
+            <div className="space-y-2">
+              <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                Email
+              </label>
               <Input
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-12"
+                className="h-12 font-bold"
                 disabled={isLoading}
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
+              <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                Password
+              </label>
               <Input
                 type="password"
-                placeholder="Password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="h-12"
+                className="h-12 font-bold"
                 disabled={isLoading}
               />
             </div>
 
             {error && (
-              <p className="text-destructive text-sm text-center">{error}</p>
+              <p className="text-center text-sm text-destructive">{error}</p>
             )}
 
             <Button
               type="submit"
-              className="w-full h-12"
+              className="h-12 w-full rounded-2xl font-black"
               disabled={isLoading}
             >
               {isLoading
                 ? isLogin
-                  ? "Logging in..."
-                  : "Creating account..."
+                  ? "Logging in…"
+                  : "Creating account…"
                 : isLogin
-                ? "Login"
-                : "Create Account"}
+                  ? "Login"
+                  : "Create account"}
             </Button>
           </form>
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 space-y-4">
             <div className="text-center">
               <button
                 type="button"
@@ -148,21 +167,21 @@ export function ModeratorAuth({ onAuth }: ModeratorAuthProps) {
                   setPassword("");
                   setName("");
                 }}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="text-sm font-medium text-zinc-400 hover:text-foreground"
               >
                 {isLogin
-                  ? "Don't have an account? Register"
-                  : "Already have an account? Login"}
+                  ? "Need an account? Register"
+                  : "Already registered? Login"}
               </button>
             </div>
-            <div className="pt-4 border-t border-border">
+            <div className="border-t border-white/5 pt-6">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-2xl font-bold"
                 onClick={() => router.push("/")}
               >
-                Back to Home
+                Back to home
               </Button>
             </div>
           </div>

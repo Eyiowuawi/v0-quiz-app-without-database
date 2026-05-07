@@ -16,6 +16,7 @@ interface QuestionCardProps {
   email: string;
   previousAnswer?: number;
   onAnswer: (selectedOption: number) => void;
+  /** Server-synced countdown from question start (same clock for all participants). */
   timeRemaining?: number | null;
   teamId?: string | null;
 }
@@ -45,17 +46,17 @@ export function QuestionCard({
   teamId,
 }: QuestionCardProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(
-    previousAnswer !== undefined ? previousAnswer : null,
+    previousAnswer !== undefined ? previousAnswer : null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedOption, setLastSubmittedOption] = useState<number | null>(
-    previousAnswer !== undefined ? previousAnswer : null,
+    previousAnswer !== undefined ? previousAnswer : null
   );
 
   useEffect(() => {
     setSelectedOption(previousAnswer !== undefined ? previousAnswer : null);
     setLastSubmittedOption(
-      previousAnswer !== undefined ? previousAnswer : null,
+      previousAnswer !== undefined ? previousAnswer : null
     );
   }, [questionIndex, previousAnswer]);
 
@@ -82,11 +83,14 @@ export function QuestionCard({
       if (res.ok) {
         setLastSubmittedOption(optionIndex);
         onAnswer(optionIndex);
-        toast.success("Answer saved");
       } else if (res.status === 409 && teamId) {
         const errorData = await res.json().catch(() => ({}));
         const check = await fetch(
-          `/api/quiz/answer?email=${encodeURIComponent(email)}&teamId=${encodeURIComponent(teamId)}&questionIndex=${questionIndex}`,
+          `/api/quiz/answer?email=${encodeURIComponent(
+            email
+          )}&teamId=${encodeURIComponent(
+            teamId
+          )}&questionIndex=${questionIndex}`
         ).then((r) => r.json());
         if (check.answer?.selectedOption !== undefined) {
           const opt = check.answer.selectedOption as number;
@@ -113,28 +117,28 @@ export function QuestionCard({
   const safeTotal = Math.max(totalQuestions, 1);
 
   return (
-    <div className="relative mx-auto w-full max-w-2xl">
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-[1.75rem] border-4 border-primary/30 bg-card p-5 shadow-xl sm:p-8",
-          "shadow-[0_14px_0_0_oklch(0.62_0.21_42_/_0.12)]",
-        )}
-      >
-        <div className="pointer-events-none absolute -right-16 top-0 h-40 w-40 rounded-full bg-chart-4/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-10 bottom-0 h-36 w-36 rounded-full bg-chart-2/15 blur-3xl" />
+    <div className="relative mx-auto w-full max-w-3xl">
+      <div className="glass-card relative overflow-hidden rounded-4xl border border-white/10 p-5 shadow-2xl sm:p-10">
+        <div className="pointer-events-none absolute -right-16 top-0 h-48 w-48 rounded-full bg-indigo-600/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-8 -left-12 h-40 w-40 rounded-full bg-purple-600/10 blur-3xl" />
 
         <div className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-chart-2/50 bg-linear-to-br from-chart-2/25 to-primary/20 shadow-inner">
-              <Crosshair className="h-6 w-6 text-primary" strokeWidth={2.5} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-500/30 bg-indigo-500/15 shadow-inner">
+              <Crosshair
+                className="h-6 w-6 text-indigo-400"
+                strokeWidth={2.5}
+              />
             </div>
             <div>
-              <p className="font-black text-[10px] uppercase tracking-[0.3em] text-chart-2">
+              <p className="font-black text-[10px] uppercase tracking-[0.3em] text-indigo-400">
                 Question
               </p>
               <p className="font-black tabular-nums text-foreground">
-                <span className="text-3xl text-primary sm:text-4xl">{qNum}</span>
-                <span className="text-lg text-muted-foreground sm:text-xl">
+                <span className="text-3xl text-indigo-400 sm:text-4xl">
+                  {qNum}
+                </span>
+                <span className="text-lg text-zinc-500 sm:text-xl">
                   {" "}
                   / {totalQuestions}
                 </span>
@@ -149,20 +153,20 @@ export function QuestionCard({
                   "flex items-center gap-1.5 rounded-2xl border-2 px-3 py-2 font-black tabular-nums shadow-sm",
                   timeRemaining <= 10
                     ? "animate-pulse border-destructive bg-destructive/15 text-destructive"
-                    : "border-chart-4/50 bg-chart-4/20 text-foreground",
+                    : "border-indigo-500/30 bg-indigo-500/10 text-foreground"
                 )}
               >
                 <Zap
                   className={cn(
                     "h-4 w-4",
-                    timeRemaining <= 10 ? "text-destructive" : "text-chart-1",
+                    timeRemaining <= 10 ? "text-destructive" : "text-indigo-400"
                   )}
                   strokeWidth={2.5}
                 />
                 <span className="text-sm">{timeRemaining}s</span>
               </div>
             )}
-            <div className="flex max-w-[200px] flex-wrap items-center gap-1.5 rounded-full border-2 border-border bg-muted/60 px-2 py-1.5 sm:max-w-none">
+            <div className="flex max-w-50 flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 sm:max-w-none">
               {Array.from({ length: safeTotal }, (_, i) => (
                 <span
                   key={i}
@@ -172,8 +176,8 @@ export function QuestionCard({
                     i < questionIndex
                       ? "bg-success shadow-sm"
                       : i === questionIndex
-                        ? "scale-125 bg-primary ring-2 ring-primary/50"
-                        : "bg-border",
+                      ? "scale-125 bg-indigo-500 ring-2 ring-indigo-400/50"
+                      : "bg-zinc-700"
                   )}
                 />
               ))}
@@ -181,9 +185,23 @@ export function QuestionCard({
           </div>
         </div>
 
-        <h2 className="relative mb-8 text-pretty text-lg font-black leading-snug tracking-tight text-foreground sm:text-2xl">
+        <h2 className="relative mb-6 text-pretty font-display text-lg font-black uppercase italic leading-snug tracking-tight text-foreground sm:text-2xl md:text-3xl">
           {question.question}
         </h2>
+
+        <div className="mb-4 rounded-[1.75rem] border border-white/10 bg-white/5 p-4 text-sm font-semibold text-foreground">
+          <p className="uppercase tracking-[0.22em] text-indigo-400">Mission</p>
+          <p className="mt-2 text-base text-zinc-300">
+            Answer quickly and hit the highest score for this round.
+          </p>
+        </div>
+
+        <div className="mb-6 h-2 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+            style={{ width: `${(qNum / safeTotal) * 100}%` }}
+          />
+        </div>
 
         <div className="relative space-y-3">
           {question.options.map((option, index) => {
@@ -193,7 +211,8 @@ export function QuestionCard({
               selectedOption === lastSubmittedOption &&
               lastSubmittedOption === index;
             const badge = OPTION_BADGE[index % OPTION_BADGE.length];
-            const selectedStyle = OPTION_SELECTED[index % OPTION_SELECTED.length];
+            const selectedStyle =
+              OPTION_SELECTED[index % OPTION_SELECTED.length];
 
             return (
               <button
@@ -202,16 +221,16 @@ export function QuestionCard({
                 onClick={() => handleOptionSelect(index)}
                 disabled={isSubmitting || answerLocked}
                 className={cn(
-                  "group w-full rounded-2xl border-4 p-4 text-left transition-all duration-200",
-                  "focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/25",
+                  "group w-full rounded-[1.25rem] border-2 p-4 text-left transition-all duration-200",
+                  "focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/30",
                   !isSubmitting &&
                     !answerLocked &&
                     "cursor-pointer hover:-translate-y-0.5 active:translate-y-0",
                   isHighlighted
                     ? selectedStyle
-                    : "border-border bg-card hover:border-primary/40 hover:shadow-md",
+                    : "border-white/10 bg-white/5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5",
                   isSubmitting && "cursor-wait opacity-75",
-                  answerLocked && !isHighlighted && "opacity-55",
+                  answerLocked && !isHighlighted && "opacity-55"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -220,7 +239,7 @@ export function QuestionCard({
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 text-sm font-black transition-colors",
                       isHighlighted
                         ? "border-white/35 bg-white/20 text-white"
-                        : cn("border-current bg-background/80", badge),
+                        : cn("border-current bg-background/80", badge)
                     )}
                   >
                     {String.fromCharCode(65 + index)}
@@ -241,6 +260,12 @@ export function QuestionCard({
             );
           })}
         </div>
+
+        {answerLocked && (
+          <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-4 text-center text-sm font-semibold text-zinc-300">
+            Answer locked in. Great move — get ready for the next challenge.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,12 +5,12 @@ A real-time quiz application built with Next.js, featuring live participant trac
 ## 🚀 Features
 
 ### For Participants
-- **Easy Login**: Just enter your email - no password required
-- **Real-time Updates**: See questions as they're released by the moderator
-- **Auto-submit Answers**: Click an option to instantly submit your answer
-- **Change Answers**: Easily switch your answer by selecting a different option
-- **Timer Mode**: Visual countdown when timer mode is enabled
-- **Detailed Results**: See your score, grade, and review all answers (correct, incorrect, and unanswered)
+- **Easy Login**: Email + display name — no password (honor-system identity)
+- **Real-time Updates**: Questions follow the host’s pacing
+- **Auto-submit Answers**: Tap an option to save; your choice stays locked for that question
+- **Timer Mode**: Countdown when the host enables timed mode (synced from the server clock)
+- **Results**: After the host opens results, see your % correct, grade-style summary, and answer review
+- **Valid quiz links**: Only team IDs created by a registered host work — random IDs won’t start a ghost quiz
 
 ### For Moderators
 - **Full Control**: Start, pause, resume, and navigate between questions
@@ -18,13 +18,14 @@ A real-time quiz application built with Next.js, featuring live participant trac
   - **Manual Control**: Advance questions at your own pace
   - **Auto Timer**: Automatically advance questions after a set duration (15s - 2min)
 - **Custom Questions**: Upload your own questions via JSON
-- **Live Leaderboard**: See all participants ranked by score in real-time
+- **Live Leaderboard**: Ranked by correct answers / accuracy; **Export CSV** from the console
 - **Participant Tracking**: View all registered participants
 - **Results Management**: Control when results are shown to participants
 
 ## 📋 Prerequisites
 
-- Node.js 18+ and pnpm (or npm/yarn)
+- **Node.js 18+**
+- **pnpm** recommended (`pnpm-lock.yaml` is the source of truth). You can use **npm** or **yarn** if you prefer, but lockfile updates should stay on pnpm for consistency.
 - Upstash Redis account (free tier available)
 - Basic knowledge of JSON for custom questions
 
@@ -41,8 +42,6 @@ cd v0-quiz-app-without-database
 
 ```bash
 pnpm install
-# or
-npm install
 ```
 
 ### 3. Set Up Environment Variables
@@ -59,9 +58,11 @@ KV_REST_API_TOKEN=your_upstash_redis_token_here
 # Change this to a secure key in production
 ADMIN_KEY=admin123
 
-# Optional: App URL (for sharing)
+# Public URL for copied player links (set in production)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+Use the same **origin** players will open (e.g. `https://your-app.vercel.app`) so **Copy link** in the moderator dashboard matches your deployment.
 
 #### Getting Upstash Redis Credentials:
 
@@ -75,20 +76,22 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ```bash
 pnpm dev
-# or
-npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 5. Access Moderator Dashboard
+### 5. Health check (optional)
+
+`GET /api/health` returns `{ ok, redis }` after a Redis ping — useful after deploy or when debugging env vars.
+
+### 6. Access Moderator Dashboard
 
 Navigate to [http://localhost:3000/moderator](http://localhost:3000/moderator) and:
 - **First time?** Click "Register" to create an account with email, password, and name
 - **Returning?** Click "Login" and enter your email and password
 - After login, you'll get a unique quiz URL to share with participants
 
-### 6. Access Admin Dashboard (Optional)
+### 7. Access Admin Dashboard (Optional)
 
 Navigate to [http://localhost:3000/admin](http://localhost:3000/admin) and:
 - Enter your admin key (default: `admin123`, set via `ADMIN_KEY` env variable)
@@ -255,7 +258,8 @@ The app includes robust race condition handling for high-concurrency scenarios:
 - **Exponential Backoff**: Retries use increasing delays (10ms → 160ms) to reduce contention
 
 ### Security Considerations
-- **Password Hashing**: Currently uses base64 (simple). **Use bcrypt or similar in production**
+- **Password Hashing**: Moderator passwords use **bcrypt** (via `bcryptjs`). Accounts created before this change still log in: legacy base64 verification is accepted once, then the hash is upgraded on successful login.
+- **Rate limiting**: Join (`POST /api/auth`) and moderator register/login use **Upstash Ratelimit** (same Redis) to reduce brute-force / spam.
 - **Sessions**: Stored in localStorage (client-side). Consider httpOnly cookies for production
 - **Email Validation**: Basic format check. Enhance for production use
 - **Team Isolation**: Each team's data is completely isolated - no cross-team access

@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { redis, KEYS } from "@/lib/redis";
 import { normalizeParticipantName } from "@/lib/participant-name";
 import { atomicUpsertParticipant } from "@/lib/participants";
+import { isTeamRegistered } from "@/lib/team-registry";
+import { authJoinRatelimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = clientIp(request);
+    const { success } = await authJoinRatelimit.limit(ip);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many join attempts. Wait a minute and try again." },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
-    const { email, teamId } = body;
+    const { email, teamId: rawTeamId } = body;
+    const teamId =
+      typeof rawTeamId === "string" ? rawTeamId.trim() : rawTeamId;
     const displayName = normalizeParticipantName(body.name);
 
     if (!email || !email.includes("@")) {
@@ -27,6 +40,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Team ID is required" },
         { status: 400 },
+      );
+    }
+
+    if (!(await isTeamRegistered(teamId))) {
+      return NextResponse.json(
+        {
+          error:
+            "This team ID is not valid. Check the link from your host or ask them to open the moderator console once to activate the room.",
+          code: "UNKNOWN_TEAM",
+        },
+        { status: 404 },
       );
     }
 

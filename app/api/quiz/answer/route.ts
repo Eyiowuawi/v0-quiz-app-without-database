@@ -5,6 +5,8 @@ import {
   atomicSubmitAnswer,
   type AnswerPayload,
 } from '@/lib/atomic-quiz-answer'
+import { atomicExpireTimerIfNeeded } from '@/lib/atomic-moderator-quiz'
+import { isTeamRegistered } from '@/lib/team-registry'
 
 // Helper to get questions (custom or default)
 async function getQuestions(teamId: string): Promise<Question[]> {
@@ -14,14 +16,26 @@ async function getQuestions(teamId: string): Promise<Question[]> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, questionIndex, selectedOption, teamId } = await request.json()
+    const body = await request.json() as {
+      email?: string
+      questionIndex?: number
+      selectedOption?: number
+      teamId?: string
+    }
+    const { email, questionIndex, selectedOption, teamId } = body
 
     if (!email || questionIndex === undefined || selectedOption === undefined || !teamId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    if (!(await isTeamRegistered(teamId))) {
+      return NextResponse.json({ error: 'Unknown team' }, { status: 404 })
+    }
+
     const normalizedEmail = email.toLowerCase().trim()
     const questions = await getQuestions(teamId)
+
+    await atomicExpireTimerIfNeeded(teamId, questions.length, Date.now())
 
     // Verify quiz is active and on this question
     const state = await redis.get<QuizState>(KEYS.QUIZ_STATE(teamId))
@@ -59,7 +73,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Don't return correct answer - just confirm submission
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Submit answer error:', error)
