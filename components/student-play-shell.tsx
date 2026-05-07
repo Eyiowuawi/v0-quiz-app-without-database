@@ -31,17 +31,17 @@ export function StudentPlayShell({
           </div>
           <div className="min-w-0 leading-tight">
             <p className="font-display text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
-              Live
+              Arena
             </p>
             <p className="truncate text-[10px] font-bold text-zinc-500 sm:text-xs">
-              QuizPulse
+              Live play
             </p>
           </div>
         </div>
 
         <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 sm:px-3">
           <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">
-            Room
+            Code
           </span>
           <span className="font-mono text-xs font-black tracking-widest text-foreground sm:text-sm">
             {formatRoomCode(teamId)}
@@ -53,15 +53,15 @@ export function StudentPlayShell({
             className="hidden min-w-0 flex-col items-end text-right sm:flex"
             title={email}
           >
-            <span className="max-w-[140px] truncate text-xs font-black text-foreground md:max-w-[180px]">
+            <span className="max-w-35 truncate text-xs font-black text-foreground md:max-w-45">
               {participantDisplayName}
             </span>
-            <span className="max-w-[140px] truncate text-[10px] font-semibold text-zinc-500 md:max-w-[180px]">
+            <span className="max-w-35 truncate text-[10px] font-semibold text-zinc-500 md:max-w-45">
               {email}
             </span>
           </div>
           <span
-            className="max-w-[88px] truncate text-xs font-black text-foreground sm:hidden"
+            className="max-w-22 truncate text-xs font-black text-foreground sm:hidden"
             title={`${participantDisplayName} · ${email}`}
           >
             {participantDisplayName}

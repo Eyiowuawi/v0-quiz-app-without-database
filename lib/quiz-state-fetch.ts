@@ -6,16 +6,25 @@ export class UnknownTeamError extends Error {
   }
 }
 
-export async function fetchQuizState(url: string) {
+export async function fetchQuizState<T>(url: string): Promise<T> {
   const res = await fetch(url);
-  const data = (await res.json()) as { error?: string; code?: string };
-  if (res.status === 404 && data?.code === "UNKNOWN_TEAM") {
+  const data = (await res.json()) as T | { error?: string; code?: string };
+
+  if (
+    res.status === 404 &&
+    (data as { code?: string })?.code === "UNKNOWN_TEAM"
+  ) {
     throw new UnknownTeamError();
   }
+
   if (!res.ok) {
+    const errorData = data as { error?: string };
     throw new Error(
-      typeof data.error === "string" ? data.error : "Failed to load quiz",
+      typeof errorData.error === "string"
+        ? errorData.error
+        : "Failed to load quiz"
     );
   }
-  return data;
+
+  return data as T;
 }

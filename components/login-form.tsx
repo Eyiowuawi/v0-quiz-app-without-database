@@ -14,6 +14,12 @@ interface LoginFormProps {
   teamId?: string | null;
 }
 
+function formatRoomCode(teamId: string) {
+  const code = teamId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (code.length <= 4) return code || "----";
+  return code.match(/.{1,4}/g)?.join(" ") ?? code;
+}
+
 export function LoginForm({ onLogin, teamId }: LoginFormProps) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,7 +66,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
         localStorage.setItem(`quiz-email-${effectiveTeamId}`, data.email);
         localStorage.setItem(
           `quiz-name-${effectiveTeamId}`,
-          data.name || displayName.trim(),
+          data.name || displayName.trim()
         );
       }
       toast.success(`You’re in, ${data.name || displayName.trim()}!`);
@@ -100,10 +106,21 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
             </h1>
             <p className="text-sm font-medium text-zinc-400">
               {teamId
-                ? "Add your name and email so the host can see who’s playing."
+                ? "Add your name and email so the host can identify you."
                 : "Enter your team ID, then your name and email to join."}
             </p>
           </div>
+
+          {effectiveTeamId && (
+            <div className="mb-6 rounded-[1.75rem] border border-white/10 bg-indigo-500/5 p-4 text-center shadow-inner shadow-indigo-500/10">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-indigo-300">
+                Arena code
+              </p>
+              <p className="mt-2 text-2xl font-black tracking-[0.18em] text-white">
+                {formatRoomCode(effectiveTeamId)}
+              </p>
+            </div>
+          )}
 
           {!teamId && (
             <div className="mb-6 space-y-2">
@@ -129,7 +146,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
                 </Button>
               </div>
               <p className="text-xs text-zinc-500">
-                From your moderator or the quiz link
+                Paste the code from your moderator or quiz link.
               </p>
             </div>
           )}

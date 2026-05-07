@@ -29,6 +29,23 @@ interface UserAnswer {
   selectedOption: number;
 }
 
+interface Participant {
+  email: string;
+  displayName: string;
+  joinedAt: number;
+}
+
+interface QuizStateResponse {
+  state: QuizState | null;
+  totalQuestions: number;
+  currentQuestion: {
+    id: number;
+    question: string;
+    options: string[];
+  } | null;
+  participants?: Participant[];
+}
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface QuizClientProps {
@@ -76,7 +93,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
     data: quizData,
     error: quizStateError,
     mutate: mutateQuizState,
-  } = useSWR(
+  } = useSWR<QuizStateResponse>(
     effectiveTeamId
       ? `/api/quiz/state?teamId=${encodeURIComponent(effectiveTeamId)}`
       : null,
@@ -169,7 +186,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
         <div className="w-full max-w-md">
-          <div className="glass-card rounded-[2rem] border border-white/10 p-8 text-center sm:p-10">
+          <div className="glass-card rounded-4xl border border-white/10 p-8 text-center sm:p-10">
             <h1 className="mb-4 font-display text-2xl font-black uppercase italic tracking-tighter text-foreground">
               Team ID required
             </h1>
@@ -193,7 +210,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
         <div className="w-full max-w-md">
-          <div className="glass-card rounded-[2rem] border border-destructive/25 p-8 text-center sm:p-10">
+          <div className="glass-card rounded-4xl border border-destructive/25 p-8 text-center sm:p-10">
             <h1 className="mb-4 font-display text-2xl font-black uppercase italic tracking-tighter text-foreground">
               Quiz link isn&apos;t valid
             </h1>
@@ -241,7 +258,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
     );
   }
 
-  const state: QuizState | null = quizData?.state;
+  const state: QuizState | null = quizData?.state ?? null;
   const currentQuestion = quizData?.currentQuestion;
   const totalQuestions = quizData?.totalQuestions || 0;
 
@@ -263,6 +280,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
         message="Waiting for the quiz to start..."
         displayName={displayName}
         email={email}
+        participants={quizData?.participants}
       />,
     );
   }
@@ -284,6 +302,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
         message="Quiz is paused. Hang tight!"
         displayName={displayName}
         email={email}
+        participants={quizData?.participants}
       />,
     );
   }
@@ -317,6 +336,7 @@ export function QuizClient({ teamId }: QuizClientProps) {
       message="Loading..."
       displayName={displayName}
       email={email}
+      participants={quizData?.participants}
     />,
   );
 }
