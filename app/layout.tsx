@@ -4,6 +4,7 @@ import { Inter, Outfit, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { ConnectionStatus } from "@/components/connection-status";
+// @ts-ignore
 import "./globals.css";
 
 const inter = Inter({
