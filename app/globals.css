@@ -3,8 +3,47 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* QuizPulse-inspired dark UI — semantic tokens for shadcn-style components */
+/* Light theme (default) */
 :root {
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #6366f1;
+  --radius: 1rem;
+  --success: #22c55e;
+  --success-foreground: #ecfdf5;
+  --chart-1: #6366f1;
+  --chart-2: #818cf8;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #e879f9;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #6366f1;
+}
+
+/* Dark theme */
+.dark {
   --background: #09090b;
   --foreground: #fafafa;
   --card: #09090b;
@@ -24,7 +63,6 @@
   --border: #27272a;
   --input: #27272a;
   --ring: #6366f1;
-  --radius: 1rem;
   --success: #22c55e;
   --success-foreground: #ecfdf5;
   --chart-1: #6366f1;
@@ -109,11 +147,11 @@
 
 @layer utilities {
   .glass {
-    @apply border border-white/10 bg-zinc-900/50 backdrop-blur-xl;
+    @apply border border-black/10 bg-white/80 backdrop-blur-xl;
   }
 
   .glass-card {
-    @apply border border-white/5 bg-zinc-900/40 shadow-2xl backdrop-blur-md;
+    @apply border border-black/5 bg-white/90 shadow-xl backdrop-blur-md;
   }
 
   .text-glow {
@@ -123,7 +161,7 @@
   .bg-grid {
     background-image: radial-gradient(
       circle at 2px 2px,
-      rgba(255, 255, 255, 0.05) 1px,
+      rgba(0, 0, 0, 0.07) 1px,
       transparent 0
     );
     background-size: 24px 24px;
@@ -150,6 +188,26 @@
   .font-display {
     font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   }
+}
+
+/* Dark mode overrides for theme-aware utility classes */
+.dark .glass {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(24, 24, 27, 0.5);
+}
+
+.dark .glass-card {
+  border-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(24, 24, 27, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .bg-grid {
+  background-image: radial-gradient(
+    circle at 2px 2px,
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 0
+  );
 }
 
 @keyframes student-bounce {

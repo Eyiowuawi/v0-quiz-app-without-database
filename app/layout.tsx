@@ -4,6 +4,7 @@ import { Inter, Outfit, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { ConnectionStatus } from "@/components/connection-status";
+import { ThemeProvider } from "@/components/theme-provider";
 // @ts-ignore
 import "./globals.css";
 
@@ -56,13 +57,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${inter.variable} ${outfit.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+      className={`${inter.variable} ${outfit.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/30">
-        <ConnectionStatus />
-        {children}
-        <Toaster position="top-center" richColors />
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <ConnectionStatus />
+          {children}
+          <Toaster position="top-center" richColors />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -69,7 +69,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
           data.name || displayName.trim()
         );
       }
-      toast.success(`You’re in, ${data.name || displayName.trim()}!`);
+      toast.success(`You're in, ${data.name || displayName.trim()}!`);
       onLogin(data.email, data.name || displayName.trim());
     } catch {
       const errorMsg = "Something went wrong. Please try again.";
@@ -95,7 +95,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
         <div className="glass-card relative overflow-hidden rounded-[2rem] p-8 sm:p-10">
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-indigo-600/10 blur-3xl" />
           <div className="relative mb-8 text-center">
-            <p className="mb-4 inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-indigo-400">
+            <p className="mb-4 inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-indigo-500">
               Player join
             </p>
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
@@ -104,7 +104,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
             <h1 className="mb-2 font-display text-3xl font-black uppercase italic tracking-tighter text-foreground">
               Enter the arena
             </h1>
-            <p className="text-sm font-medium text-zinc-400">
+            <p className="text-sm font-medium text-muted-foreground">
               {teamId
                 ? "Add your name and email so the host can identify you."
                 : "Enter your team ID, then your name and email to join."}
@@ -112,11 +112,11 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
           </div>
 
           {effectiveTeamId && (
-            <div className="mb-6 rounded-[1.75rem] border border-white/10 bg-indigo-500/5 p-4 text-center shadow-inner shadow-indigo-500/10">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-indigo-300">
+            <div className="mb-6 rounded-[1.75rem] border border-border bg-indigo-500/5 p-4 text-center shadow-inner shadow-indigo-500/10">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-indigo-500">
                 Arena code
               </p>
-              <p className="mt-2 text-2xl font-black tracking-[0.18em] text-white">
+              <p className="mt-2 text-2xl font-black tracking-[0.18em] text-foreground">
                 {formatRoomCode(effectiveTeamId)}
               </p>
             </div>
@@ -124,7 +124,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
 
           {!teamId && (
             <div className="mb-6 space-y-2">
-              <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+              <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Team ID
               </label>
               <div className="flex gap-2">
@@ -145,7 +145,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </div>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Paste the code from your moderator or quiz link.
               </p>
             </div>
@@ -154,7 +154,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
           {effectiveTeamId && (
             <form onSubmit={handleSubmit} className="relative space-y-5">
               <div className="space-y-2">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   Your name
                 </label>
                 <Input
@@ -171,7 +171,7 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   Email
                 </label>
                 <Input
@@ -201,13 +201,13 @@ export function LoginForm({ onLogin, teamId }: LoginFormProps) {
           )}
 
           {effectiveTeamId && (
-            <p className="mt-6 text-center text-xs text-zinc-500">
+            <p className="mt-6 text-center text-xs text-muted-foreground">
               No password — your details are only used for this quiz session.
             </p>
           )}
 
           {!teamId && (
-            <div className="mt-8 border-t border-white/5 pt-6">
+            <div className="mt-8 border-t border-border pt-6">
               <Button
                 variant="outline"
                 className="w-full rounded-2xl font-bold"

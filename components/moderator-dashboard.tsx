@@ -21,6 +21,7 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface QuizState {
   currentQuestionIndex: number;
@@ -100,7 +101,7 @@ function SkeletonBlock({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "animate-pulse rounded-lg bg-white/8",
+        "animate-pulse rounded-lg bg-muted/50",
         className,
       )}
       aria-hidden
@@ -123,7 +124,7 @@ function ModeratorDashboardSkeleton({
       aria-busy="true"
     >
       <span className="sr-only">Loading moderator console…</span>
-      <header className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-xl">
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black italic text-white shadow-lg shadow-indigo-600/25">
@@ -133,7 +134,7 @@ function ModeratorDashboardSkeleton({
               Moderator console
             </h1>
             {moderatorName ? (
-              <span className="hidden text-sm font-medium text-zinc-400 sm:inline">
+              <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
                 {moderatorName}
               </span>
             ) : (
@@ -142,17 +143,18 @@ function ModeratorDashboardSkeleton({
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
             <SkeletonBlock className="h-4 w-28" />
+            <ThemeToggle />
             <button
               type="button"
               onClick={onHome}
-              className="text-sm font-semibold text-zinc-400 hover:text-white"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Home
             </button>
             <button
               type="button"
               onClick={onLogout}
-              className="text-sm font-semibold text-zinc-400 hover:text-white"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Logout
             </button>
@@ -806,12 +808,12 @@ export function ModeratorDashboard() {
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
-        <div className="glass-card max-w-md rounded-2xl border border-white/10 p-8 text-center">
+        <div className="glass-card max-w-md rounded-2xl border border-border p-8 text-center">
           <p className="mb-2 font-display text-lg font-black text-destructive">
             Couldn&apos;t load console
           </p>
-          <p className="mb-6 text-sm text-zinc-400">{error.message}</p>
-          <p className="mb-6 text-xs text-zinc-500">
+          <p className="mb-6 text-sm text-muted-foreground">{error.message}</p>
+          <p className="mb-6 text-xs text-muted-foreground">
             If this keeps happening, confirm Redis env vars and open{" "}
             <a
               href="/api/health"
@@ -860,7 +862,7 @@ export function ModeratorDashboard() {
 
   return (
     <div className="relative min-h-screen bg-background bg-grid">
-      <header className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-xl">
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black italic text-white shadow-lg shadow-indigo-600/25">
@@ -870,26 +872,27 @@ export function ModeratorDashboard() {
               Moderator console
             </h1>
             {moderatorName && (
-              <span className="hidden text-sm font-medium text-zinc-400 sm:inline">
+              <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
                 {moderatorName}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
-            <span className="text-sm font-medium text-zinc-400">
+            <span className="text-sm font-medium text-muted-foreground">
               {participantCount} participant{participantCount !== 1 ? "s" : ""}
             </span>
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => (window.location.href = "/")}
-              className="text-sm font-semibold text-zinc-400 hover:text-white"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Home
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className="text-sm font-semibold text-zinc-400 hover:text-white"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Logout
             </button>
@@ -1785,7 +1788,7 @@ export function ModeratorDashboard() {
       {/* Clear Database Confirmation Modal */}
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="glass-card w-full max-w-md rounded-2xl border border-white/10 p-6">
+          <div className="glass-card w-full max-w-md rounded-2xl border border-border p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               Clear Database?
             </h2>

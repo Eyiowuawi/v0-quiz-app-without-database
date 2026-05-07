@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function formatRoomCode(teamId: string): string {
   const t = teamId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -24,23 +25,23 @@ export function StudentPlayShell({
 }) {
   return (
     <div className="min-h-screen bg-background bg-grid pt-14">
-      <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-stretch gap-2 border-b border-white/5 bg-zinc-950/80 px-3 shadow-lg shadow-black/20 backdrop-blur-xl sm:gap-3 sm:px-4">
+      <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-stretch gap-2 border-b border-border bg-background/80 px-3 shadow-sm shadow-black/5 backdrop-blur-xl sm:gap-3 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black italic text-white shadow-md shadow-indigo-600/30">
             Q
           </div>
           <div className="min-w-0 leading-tight">
-            <p className="font-display text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
+            <p className="font-display text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">
               Arena
             </p>
-            <p className="truncate text-[10px] font-bold text-zinc-500 sm:text-xs">
+            <p className="truncate text-[10px] font-bold text-muted-foreground sm:text-xs">
               Live play
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 sm:px-3">
-          <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">
+        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-border bg-secondary/50 px-2 py-1 sm:px-3">
+          <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">
             Code
           </span>
           <span className="font-mono text-xs font-black tracking-widest text-foreground sm:text-sm">
@@ -56,7 +57,7 @@ export function StudentPlayShell({
             <span className="max-w-35 truncate text-xs font-black text-foreground md:max-w-45">
               {participantDisplayName}
             </span>
-            <span className="max-w-35 truncate text-[10px] font-semibold text-zinc-500 md:max-w-45">
+            <span className="max-w-35 truncate text-[10px] font-semibold text-muted-foreground md:max-w-45">
               {email}
             </span>
           </div>
@@ -66,10 +67,11 @@ export function StudentPlayShell({
           >
             {participantDisplayName}
           </span>
+          <ThemeToggle />
           <button
             type="button"
             onClick={onLeave}
-            className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-zinc-300 transition-transform hover:bg-white/10 active:scale-95 sm:px-3"
+            className="shrink-0 rounded-xl border border-border bg-secondary/50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95 sm:px-3"
           >
             Exit
           </button>

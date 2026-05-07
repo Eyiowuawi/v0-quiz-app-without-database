@@ -40,7 +40,7 @@ export function WaitingScreen({
       ? "The host has paused the game. Stay ready for the next round."
       : variant === "loading"
       ? "Connecting to the live quiz. Your answers are syncing in real time."
-      : "You’re in the lobby. The host will launch the next question soon.";
+      : "You're in the lobby. The host will launch the next question soon.";
 
   const joinedPlayers = participants
     ? [...participants].sort((a, b) => a.joinedAt - b.joinedAt)
@@ -60,34 +60,34 @@ export function WaitingScreen({
             <div className="relative mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl border border-indigo-500/20 bg-indigo-500/10 shadow-inner shadow-indigo-500/10">
               <div className="absolute inset-0 m-auto h-24 w-24 rounded-full border border-indigo-400/30 opacity-30" />
               <Icon
-                className="relative h-12 w-12 text-indigo-300"
+                className="relative h-12 w-12 text-indigo-500"
                 strokeWidth={2.2}
               />
             </div>
-            <p className="mb-2 font-black text-[10px] uppercase tracking-[0.35em] text-indigo-400">
+            <p className="mb-2 font-black text-[10px] uppercase tracking-[0.35em] text-indigo-500">
               {tagline}
             </p>
             <h2 className="mb-3 font-display text-2xl font-black tracking-tight text-foreground sm:text-3xl">
               {message}
             </h2>
-            <p className="text-sm font-semibold text-zinc-400">
+            <p className="text-sm font-semibold text-muted-foreground">
               Playing as{" "}
-              <span className="font-black text-white">{displayName}</span>
+              <span className="font-black text-foreground">{displayName}</span>
             </p>
-            <p className="mt-2 text-sm text-zinc-500">{statusText}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{statusText}</p>
           </div>
 
-          <div className="mt-10 rounded-[1.75rem] border border-white/10 bg-white/5 p-5 shadow-inner shadow-indigo-500/5">
+          <div className="mt-10 rounded-[1.75rem] border border-border bg-secondary/30 p-5 shadow-inner shadow-indigo-500/5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-500">
                   Live lobby
                 </p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
                   Players who have joined
                 </p>
               </div>
-              <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.25em] text-indigo-300">
+              <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.25em] text-indigo-500">
                 {playerCount} player{playerCount !== 1 ? "s" : ""}
               </span>
             </div>
@@ -98,14 +98,14 @@ export function WaitingScreen({
                   {visiblePlayers.map((player) => (
                     <div
                       key={player.email}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-zinc-950/70 px-4 py-2"
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-4 py-2"
                     >
                       <span className="font-semibold">
                         {player.displayName}
                       </span>
                       {player.email.toLowerCase().trim() ===
                       currentUserEmail ? (
-                        <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-black uppercase tracking-[0.2em] text-indigo-300">
+                        <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-black uppercase tracking-[0.2em] text-indigo-500">
                           You
                         </span>
                       ) : null}
@@ -113,21 +113,21 @@ export function WaitingScreen({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted-foreground">
                   No players have joined yet. Once someone enters the arena
-                  code, they’ll appear here.
+                  code, they'll appear here.
                 </p>
               )}
               {playerCount > visiblePlayers.length && (
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   +{playerCount - visiblePlayers.length} more joined player
                   {playerCount - visiblePlayers.length !== 1 ? "s" : ""}
                 </p>
               )}
             </div>
 
-            <p className="mt-5 text-sm text-zinc-400">
-              Tip: keep this page open so you’re ready when the host drops the
+            <p className="mt-5 text-sm text-muted-foreground">
+              Tip: keep this page open so you're ready when the host drops the
               next question.
             </p>
           </div>
