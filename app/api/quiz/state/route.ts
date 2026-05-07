@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, KEYS, QuizState } from '@/lib/redis'
 import { quizQuestions, Question } from '@/lib/quiz-data'
+import { atomicExpireTimerIfNeeded } from '@/lib/atomic-moderator-quiz'
+import { isTeamRegistered } from '@/lib/team-registry'
 
 const DEFAULT_QUIZ_STATE: QuizState = {
   currentQuestionIndex: -1,
@@ -18,10 +20,17 @@ async function getQuestions(teamId: string): Promise<Question[]> {
 
 export async function GET(request: NextRequest) {
   try {
-    const teamId = request.nextUrl.searchParams.get('teamId')
+    const teamId = request.nextUrl.searchParams.get('teamId')?.trim()
     
     if (!teamId) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 })
+    }
+
+    if (!(await isTeamRegistered(teamId))) {
+      return NextResponse.json(
+        { error: 'Unknown team ID', code: 'UNKNOWN_TEAM' },
+        { status: 404 },
+      )
     }
 
     const stateKey = KEYS.QUIZ_STATE(teamId)
@@ -34,6 +43,13 @@ export async function GET(request: NextRequest) {
       await redis.setnx(stateKey, DEFAULT_QUIZ_STATE)
       state = (await redis.get<QuizState>(stateKey)) ?? DEFAULT_QUIZ_STATE
     }
+
+    // Server-side timer: advance when duration elapsed (no moderator tab required).
+    state = await atomicExpireTimerIfNeeded(
+      teamId,
+      questions.length,
+      Date.now(),
+    )
 
     const currentQuestion = state.currentQuestionIndex >= 0 && state.currentQuestionIndex < questions.length
       ? {

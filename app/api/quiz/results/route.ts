@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
         totalAnswered,
         totalQuestions: questions.length,
         percentage:
-          totalAnswered > 0
+          questions.length > 0
             ? Math.round((correctCount / questions.length) * 100)
             : 0,
         answers: allAnswers,
@@ -160,18 +160,14 @@ export async function GET(request: NextRequest) {
       }),
     );
 
-    // Sort by correct count (descending), then by percentage (descending)
-    // Users with 0 answers will appear at the bottom
+    // Sort by correct count, then accuracy, then total answered
     leaderboard.sort((a, b) => {
-      // First sort by correct count
       if (b.correctCount !== a.correctCount) {
         return b.correctCount - a.correctCount;
       }
-      // Then by percentage
       if (b.percentage !== a.percentage) {
         return b.percentage - a.percentage;
       }
-      // Finally by total answered (users who answered more questions rank higher if scores are equal)
       return b.totalAnswered - a.totalAnswered;
     });
 

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ShareLink } from "@/components/share-link";
 import { ModeratorAuth } from "@/components/moderator-auth";
+import { SERVER_QUIZ_TIMER_GRACE_SEC } from "@/lib/quiz-scoring";
+import { getQuizJoinUrl } from "@/lib/join-url";
 import {
   CheckCircle2,
   Copy,
@@ -64,13 +66,6 @@ interface LeaderboardData {
   totalQuestions: number;
 }
 
-const createFetcher = (sessionId: string) => async (url: string) => {
-  const res = await fetch(url, {
-    headers: { "x-session-id": sessionId },
-  });
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-};
 
 // Question template for JSON upload
 const QUESTION_TEMPLATE = `[
@@ -101,6 +96,149 @@ function createEmptyBuilderQuestion(): BuilderQuestionRow {
   };
 }
 
+function SkeletonBlock({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "animate-pulse rounded-lg bg-white/8",
+        className,
+      )}
+      aria-hidden
+    />
+  );
+}
+
+function ModeratorDashboardSkeleton({
+  moderatorName,
+  onHome,
+  onLogout,
+}: {
+  moderatorName: string | null;
+  onHome: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div
+      className="relative min-h-screen bg-background bg-grid"
+      aria-busy="true"
+    >
+      <span className="sr-only">Loading moderator console…</span>
+      <header className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black italic text-white shadow-lg shadow-indigo-600/25">
+              Q
+            </div>
+            <h1 className="font-display text-xl font-black uppercase tracking-tighter text-foreground">
+              Moderator console
+            </h1>
+            {moderatorName ? (
+              <span className="hidden text-sm font-medium text-zinc-400 sm:inline">
+                {moderatorName}
+              </span>
+            ) : (
+              <SkeletonBlock className="hidden h-4 w-28 sm:block" />
+            )}
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <SkeletonBlock className="h-4 w-28" />
+            <button
+              type="button"
+              onClick={onHome}
+              className="text-sm font-semibold text-zinc-400 hover:text-white"
+            >
+              Home
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="text-sm font-semibold text-zinc-400 hover:text-white"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <div className="glass-card mb-6 rounded-2xl border border-indigo-500/15 p-6">
+          <SkeletonBlock className="mb-3 h-4 w-40" />
+          <SkeletonBlock className="mb-4 h-3 w-full max-w-sm" />
+          <SkeletonBlock className="mb-4 h-12 w-full max-w-2xl rounded-md" />
+          <div className="flex flex-wrap gap-2">
+            <SkeletonBlock className="h-9 w-28 rounded-xl" />
+            <SkeletonBlock className="h-9 w-32 rounded-xl" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="space-y-6 md:col-span-2">
+            <div className="glass-card rounded-2xl p-6">
+              <div className="mb-4 flex justify-between gap-4">
+                <SkeletonBlock className="h-6 w-44" />
+                <SkeletonBlock className="h-8 w-36 rounded-xl" />
+              </div>
+              <SkeletonBlock className="h-4 w-full max-w-lg" />
+            </div>
+            <div className="glass-card rounded-2xl p-6">
+              <SkeletonBlock className="mb-6 h-6 w-32" />
+              <div className="space-y-4">
+                <SkeletonBlock className="h-14 w-full rounded-xl" />
+                <SkeletonBlock className="h-14 w-full rounded-xl" />
+              </div>
+              <SkeletonBlock className="mt-6 h-10 w-48 rounded-lg" />
+            </div>
+            <div className="glass-card rounded-2xl p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <SkeletonBlock className="h-6 w-36" />
+                <SkeletonBlock className="h-8 w-24 rounded-full" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <SkeletonBlock key={i} className="h-11 rounded-xl" />
+                ))}
+              </div>
+            </div>
+            <div className="glass-card rounded-2xl p-6">
+              <SkeletonBlock className="mb-4 h-6 w-40" />
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <SkeletonBlock key={i} className="h-10 w-10 rounded-lg" />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="glass-card rounded-2xl p-6">
+              <SkeletonBlock className="mb-4 h-6 w-32" />
+              <div className="space-y-3">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <SkeletonBlock className="h-9 w-9 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <SkeletonBlock className="h-4 w-3/4 max-w-[180px]" />
+                      <SkeletonBlock className="h-3 w-1/2 max-w-[120px]" />
+                    </div>
+                    <SkeletonBlock className="h-8 w-14 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="glass-card rounded-2xl p-6">
+              <SkeletonBlock className="mb-4 h-6 w-36" />
+              <div className="space-y-2">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <SkeletonBlock key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function ModeratorDashboard() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -110,8 +248,7 @@ export function ModeratorDashboard() {
   const [timerMode, setTimerMode] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const autoAdvanceRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Question upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -204,13 +341,32 @@ export function ModeratorDashboard() {
   // Clear database confirmation
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const fetcher = sessionId ? createFetcher(sessionId) : null;
-
-  const { data, mutate } = useSWR<ModeratorData>(
-    sessionId ? "/api/moderator" : null,
-    fetcher,
-    { refreshInterval: 3000 },
+  const moderatorFetcher = useCallback(
+    async (url: string) => {
+      const res = await fetch(url, {
+        headers: { "x-session-id": sessionId! },
+      });
+      if (!res.ok) {
+        let message = "Failed to load moderator data";
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) message = body.error;
+        } catch {
+          if (res.status === 401) message = "Session expired — sign in again";
+        }
+        throw new Error(message);
+      }
+      return res.json() as Promise<ModeratorData>;
+    },
+    [sessionId],
   );
+
+  const { data, error, isLoading: isDashboardLoading, mutate } =
+    useSWR<ModeratorData>(
+      sessionId ? "/api/moderator" : null,
+      moderatorFetcher,
+      { refreshInterval: 3000 },
+    );
 
   const { data: leaderboardData } = useSWR<LeaderboardData>(
     sessionId && teamId
@@ -268,41 +424,32 @@ export function ModeratorDashboard() {
     }
   }, [data?.state]);
 
-  // Timer countdown and auto-advance logic
+  // Host-facing countdown: time until server may auto-advance (duration + sync grace).
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
 
     const state = data?.state;
     if (
       state?.timerMode &&
-      state?.questionStartTime &&
+      state?.questionStartTime != null &&
       state?.timerDuration &&
       state.isActive
     ) {
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor(
-          (Date.now() - state.questionStartTime!) / 1000,
-        );
-        const remaining = Math.max(0, state.timerDuration - elapsed);
-        setTimeRemaining(remaining);
-      }, 1000);
-
-      const elapsed = Math.floor((Date.now() - state.questionStartTime) / 1000);
-      const remaining = Math.max(0, state.timerDuration - elapsed);
-
-      if (remaining > 0) {
-        autoAdvanceRef.current = setTimeout(async () => {
-          await executeAction("next");
-        }, remaining * 1000);
-      }
+      const start = state.questionStartTime;
+      const duration = state.timerDuration;
+      const tick = () => {
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        const windowSec = duration + SERVER_QUIZ_TIMER_GRACE_SEC;
+        setTimeRemaining(Math.max(0, windowSec - elapsed));
+      };
+      tick();
+      timerRef.current = setInterval(tick, 1000);
     } else {
       setTimeRemaining(null);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
     };
   }, [
     data?.state?.questionStartTime,
@@ -402,6 +549,7 @@ export function ModeratorDashboard() {
     await executeAction("setTimerMode", undefined, {
       timerMode: enabled,
       timerDuration,
+      skipGlobalLoading: true,
     });
   };
 
@@ -410,6 +558,7 @@ export function ModeratorDashboard() {
     await executeAction("setTimerMode", undefined, {
       timerMode,
       timerDuration: duration,
+      skipGlobalLoading: true,
     });
   };
 
@@ -611,15 +760,95 @@ export function ModeratorDashboard() {
     setShowClearConfirm(false);
   };
 
+  const exportLeaderboardCsv = useCallback(() => {
+    if (!leaderboardData?.leaderboard?.length || !teamId) {
+      toast.error("Nothing to export yet");
+      return;
+    }
+    const totalQ = leaderboardData.totalQuestions ?? 0;
+    const rows: string[][] = [
+      ["Rank", "Display name", "Email", "Correct", "Out of", "Accuracy %"],
+    ];
+    leaderboardData.leaderboard.forEach((entry, i) => {
+      const display =
+        entry.displayName ||
+        entry.name?.trim() ||
+        entry.email.split("@")[0];
+      rows.push([
+        String(i + 1),
+        display,
+        entry.email,
+        String(entry.correctCount),
+        String(Math.max(totalQ, entry.totalAnswered) || totalQ),
+        String(entry.percentage),
+      ]);
+    });
+    const csv = rows
+      .map((r) =>
+        r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
+      )
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `leaderboard-${teamId}-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success("Leaderboard downloaded");
+  }, [leaderboardData, teamId]);
+
   if (!sessionId || !teamId) {
     return <ModeratorAuth onAuth={handleAuth} />;
   }
 
-  if (!data) {
+  if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
+        <div className="glass-card max-w-md rounded-2xl border border-white/10 p-8 text-center">
+          <p className="mb-2 font-display text-lg font-black text-destructive">
+            Couldn&apos;t load console
+          </p>
+          <p className="mb-6 text-sm text-zinc-400">{error.message}</p>
+          <p className="mb-6 text-xs text-zinc-500">
+            If this keeps happening, confirm Redis env vars and open{" "}
+            <a
+              href="/api/health"
+              className="font-semibold text-indigo-400 underline underline-offset-2"
+              target="_blank"
+              rel="noreferrer"
+            >
+              /api/health
+            </a>{" "}
+            in a new tab.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button className="font-bold" onClick={() => mutate()}>
+              Retry
+            </Button>
+            <Button
+              variant="outline"
+              className="font-bold"
+              onClick={handleLogout}
+            >
+              Sign out
+            </Button>
+          </div>
+        </div>
       </div>
+    );
+  }
+
+  if (isDashboardLoading || !data) {
+    return (
+      <ModeratorDashboardSkeleton
+        moderatorName={moderatorName}
+        onHome={() => {
+          window.location.href = "/";
+        }}
+        onLogout={handleLogout}
+      />
     );
   }
 
@@ -630,32 +859,37 @@ export function ModeratorDashboard() {
       : null;
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-border bg-card">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-foreground">
-              Quiz Moderator
+    <div className="relative min-h-screen bg-background bg-grid">
+      <header className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black italic text-white shadow-lg shadow-indigo-600/25">
+              Q
+            </div>
+            <h1 className="font-display text-xl font-black uppercase tracking-tighter text-foreground">
+              Moderator console
             </h1>
             {moderatorName && (
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                Welcome, {moderatorName}
+              <span className="hidden text-sm font-medium text-zinc-400 sm:inline">
+                {moderatorName}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span className="text-sm font-medium text-zinc-400">
               {participantCount} participant{participantCount !== 1 ? "s" : ""}
             </span>
             <button
+              type="button"
               onClick={() => (window.location.href = "/")}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm font-semibold text-zinc-400 hover:text-white"
             >
               Home
             </button>
             <button
+              type="button"
               onClick={handleLogout}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm font-semibold text-zinc-400 hover:text-white"
             >
               Logout
             </button>
@@ -663,10 +897,10 @@ export function ModeratorDashboard() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         {/* Team URL Display */}
         {teamId && (
-          <div className="bg-linear-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-xl p-6 mb-6">
+          <div className="glass-card mb-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-6">
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
@@ -680,28 +914,15 @@ export function ModeratorDashboard() {
                 </p>
                 <div className="bg-background border border-border rounded-lg p-3 mb-3">
                   <code className="text-sm font-mono text-foreground break-all">
-                    {typeof window !== "undefined"
-                      ? window.location.origin
-                      : ""}
-                    /quiz/{teamId}
+                    {getQuizJoinUrl(teamId)}
                   </code>
                 </div>
                 <div className="flex items-center gap-2">
-                  <ShareLink
-                    url={
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}/quiz/${teamId}`
-                        : undefined
-                    }
-                  />
+                  <ShareLink teamId={teamId} />
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url =
-                        typeof window !== "undefined"
-                          ? `${window.location.origin}/quiz/${teamId}`
-                          : "";
                       navigator.clipboard.writeText(teamId).then(() => {
                         toast.success("Team ID copied!");
                       });
@@ -719,7 +940,7 @@ export function ModeratorDashboard() {
           {/* Control Panel */}
           <div className="md:col-span-2 space-y-6">
             {/* Questions Management */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground">
                   Questions ({questions.length})
@@ -744,7 +965,7 @@ export function ModeratorDashboard() {
             </div>
 
             {/* Timer Mode Settings */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Quiz Mode
               </h2>
@@ -825,7 +1046,7 @@ export function ModeratorDashboard() {
             </div>
 
             {/* Status Card */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground">
                   Quiz Status
@@ -834,7 +1055,7 @@ export function ModeratorDashboard() {
                   {timerMode && timeRemaining !== null && state.isActive && (
                     <span
                       className={cn(
-                        "px-3 py-1 rounded-full text-sm font-bold",
+                        "rounded-full px-3 py-1 text-sm font-bold",
                         timeRemaining <= 10
                           ? "bg-red-500/10 text-red-600"
                           : "bg-blue-500/10 text-blue-600",
@@ -869,7 +1090,7 @@ export function ModeratorDashboard() {
                   <Button
                     onClick={handleStartQuiz}
                     disabled={isLoading}
-                    className="col-span-2 md:col-span-4 bg-green-600 hover:bg-green-700 text-white"
+                    className="col-span-2 md:col-span-4 bg-indigo-600 font-black hover:bg-indigo-500 text-white"
                   >
                     {timerMode
                       ? `Start Quiz (${timerDuration}s per question)`
@@ -935,7 +1156,7 @@ export function ModeratorDashboard() {
 
             {/* Current Question */}
             {currentQuestion && (
-              <div className="bg-card border border-border rounded-xl p-6">
+              <div className="glass-card rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-foreground">
                     Question {state.currentQuestionIndex + 1} of{" "}
@@ -974,7 +1195,7 @@ export function ModeratorDashboard() {
             )}
 
             {/* Question Navigator */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Jump to Question
               </h2>
@@ -1000,17 +1221,33 @@ export function ModeratorDashboard() {
 
           {/* Leaderboard */}
           <div className="space-y-6">
-            <div className="bg-card border border-border rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="glass-card rounded-2xl p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-foreground">
                   Leaderboard
                 </h2>
-                {leaderboardData && (
-                  <span className="text-sm text-muted-foreground">
-                    {leaderboardData.totalParticipants} participant
-                    {leaderboardData.totalParticipants !== 1 ? "s" : ""}
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {leaderboardData &&
+                    leaderboardData.leaderboard &&
+                    leaderboardData.leaderboard.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={exportLeaderboardCsv}
+                      >
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                      </Button>
+                    )}
+                  {leaderboardData && (
+                    <span className="text-sm text-muted-foreground">
+                      {leaderboardData.totalParticipants} participant
+                      {leaderboardData.totalParticipants !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
               </div>
               {leaderboardData?.leaderboard &&
               leaderboardData.leaderboard.length > 0 ? (
@@ -1065,7 +1302,7 @@ export function ModeratorDashboard() {
             </div>
 
             {/* Participants */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Participants ({participantCount})
               </h2>
@@ -1099,7 +1336,7 @@ export function ModeratorDashboard() {
       {/* Upload Questions Modal */}
       {showUploadModal && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="upload-questions-title"
@@ -1110,7 +1347,7 @@ export function ModeratorDashboard() {
             }
           }}
         >
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-lg">
+          <div className="glass-card rounded-2xl p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-lg">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <h2
@@ -1547,8 +1784,8 @@ export function ModeratorDashboard() {
 
       {/* Clear Database Confirmation Modal */}
       {showClearConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md rounded-2xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               Clear Database?
             </h2>

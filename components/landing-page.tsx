@@ -9,11 +9,12 @@ import {
   Users,
   Zap,
   BarChart3,
-  Clock,
   CheckCircle2,
   Share2,
-  Play,
   Trophy,
+  Timer,
+  ArrowRight,
+  Plus,
 } from "lucide-react";
 
 export function LandingPage() {
@@ -30,248 +31,253 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <div
-        className="pointer-events-none fixed inset-0 -z-10"
-        aria-hidden
-      >
-        <div className="absolute -top-24 left-[10%] h-80 w-80 rounded-full bg-chart-2/25 blur-3xl" />
-        <div className="absolute top-1/3 -right-20 h-96 w-96 rounded-full bg-chart-1/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-chart-4/25 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-chart-5/15 blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 h-56 w-56 rounded-full bg-chart-3/20 blur-3xl" />
-      </div>
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/15 text-primary border border-primary/20 mb-6">
-            <Zap className="w-4 h-4" />
-            <span className="text-sm font-medium">Real-Time Quiz Platform</span>
+    <div className="relative min-h-screen overflow-hidden bg-background bg-grid">
+      <div className="pointer-events-none absolute -left-20 top-0 h-[500px] w-[500px] animate-pulse rounded-full bg-indigo-600/20 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-[500px] w-[500px] animate-pulse rounded-full bg-purple-600/20 blur-[120px]" />
+
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-32 pt-12">
+        <nav className="mb-16 flex items-center justify-between md:mb-24">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-xl font-black italic text-white shadow-lg shadow-indigo-600/20">
+              Q
+            </div>
+            <span className="font-display text-2xl font-black uppercase tracking-tighter">
+              QuizPulse
+            </span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-linear-to-r from-chart-2 via-primary to-chart-5 bg-clip-text text-transparent drop-shadow-sm">
-            Quiz Runner
-          </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Create engaging, interactive quizzes with live leaderboards and
-            instant results. Perfect for classrooms, events, and team building.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button
-              size="lg"
-              className="text-lg px-8 py-6 h-auto"
-              onClick={() => router.push("/moderator")}
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/moderator")}
+            className="rounded-xl font-bold hover:bg-white/5"
+          >
+            Moderator login
+          </Button>
+        </nav>
+
+        <div className="grid items-center gap-16 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-indigo-400">
+              <Zap className="h-3 w-3 fill-current" />
+              Real-time quizzing
+            </div>
+            <h1 className="mb-8 text-5xl font-black uppercase italic leading-[0.9] tracking-tighter sm:text-7xl md:text-8xl">
+              Ignite the <br />
+              <span className="gradient-text">competition</span>
+            </h1>
+            <p className="mb-12 max-w-xl text-lg font-medium leading-relaxed text-zinc-400 sm:text-xl">
+              Host live quizzes with instant scoring, leaderboards, and a
+              moderator console—built for classrooms, events, and teams.
+            </p>
+
+            <div className="mb-16 flex flex-wrap gap-4">
+              <Button
+                size="lg"
+                onClick={() => router.push("/moderator")}
+                className="h-14 rounded-2xl bg-white px-8 text-lg font-black text-black shadow-xl shadow-white/10 hover:bg-zinc-200 sm:h-16"
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Start as moderator
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 rounded-2xl border-zinc-700 px-8 text-lg font-black sm:h-16"
+                onClick={() =>
+                  document
+                    .getElementById("join-quiz")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Join a quiz
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 border-t border-white/5 pt-10 sm:grid-cols-4">
+              <StatItem label="Live flow" value="Real-time" />
+              <StatItem label="Players" value="Unlimited" />
+              <StatItem label="Timer" value="Optional" />
+              <StatItem label="Results" value="Instant" />
+            </div>
+          </div>
+
+          <div className="lg:col-span-5">
+            <div
+              id="join-quiz"
+              className="glass-card group relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10"
             >
-              <Play className="w-5 h-5 mr-2" />
-              Start as Moderator
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 py-6 h-auto"
-              onClick={() => {
-                document
-                  .getElementById("join-quiz")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              <Users className="w-5 h-5 mr-2" />
-              Join a Quiz
-            </Button>
-          </div>
-        </div>
+              <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-indigo-600/10 blur-3xl transition-colors group-hover:bg-indigo-600/20" />
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 rounded-xl bg-chart-2/15 flex items-center justify-center mb-4">
-              <Users className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Live Participation
-            </h3>
-            <p className="text-muted-foreground">
-              Unlimited participants can join in real-time. See who's
-              participating and track engagement instantly.
-            </p>
-          </div>
+              <div className="relative mb-10">
+                <h2 className="mb-2 text-3xl font-black uppercase italic tracking-tighter sm:text-4xl">
+                  Join arena
+                </h2>
+                <p className="font-medium text-zinc-400">
+                  Enter the team ID from your host to jump in.
+                </p>
+              </div>
 
-          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 rounded-xl bg-chart-3/20 flex items-center justify-center mb-4">
-              <BarChart3 className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Live Leaderboard
-            </h3>
-            <p className="text-muted-foreground">
-              Real-time rankings update automatically. See top performers and
-              track progress as the quiz progresses.
-            </p>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 rounded-xl bg-chart-4/30 flex items-center justify-center mb-4">
-              <Clock className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Timer Mode
-            </h3>
-            <p className="text-muted-foreground">
-              Auto-advance questions with customizable timers. Perfect for
-              time-pressed sessions or competitive quizzes.
-            </p>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 rounded-xl bg-chart-3/20 flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Instant Results
-            </h3>
-            <p className="text-muted-foreground">
-              Participants see their scores immediately with detailed answer
-              reviews. Know what you got right and what you missed.
-            </p>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 rounded-xl bg-chart-5/20 flex items-center justify-center mb-4">
-              <Share2 className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Easy Sharing
-            </h3>
-            <p className="text-muted-foreground">
-              Each quiz gets a unique link. Share with participants instantly.
-              No accounts needed for participants.
-            </p>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-md shadow-chart-2/10 hover:border-primary/30 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 rounded-xl bg-chart-1/20 flex items-center justify-center mb-4">
-              <Trophy className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Custom Questions
-            </h3>
-            <p className="text-muted-foreground">
-              Upload your own questions via JSON. Create quizzes tailored to
-              your content, subject, or event.
-            </p>
-          </div>
-        </div>
-
-        {/* Join Quiz Section */}
-        <div
-          id="join-quiz"
-          className="bg-card border-2 border-primary/25 rounded-3xl p-8 md:p-12 shadow-xl shadow-chart-2/15"
-        >
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Join a Quiz
-            </h2>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Enter the team ID provided by your moderator, or use the shared
-              quiz link
-            </p>
-
-            <form onSubmit={handleJoinQuiz} className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Input
-                  type="text"
-                  placeholder="Enter Team ID (e.g., abc123def456)"
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                  className="h-14 text-lg flex-1"
-                />
+              <form onSubmit={handleJoinQuiz} className="relative space-y-6">
+                <div className="space-y-2">
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                    Team ID
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Paste or type team ID"
+                    value={teamId}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    className="h-14 border-white/10 bg-white/5 text-lg font-bold placeholder:text-zinc-600 sm:h-16"
+                  />
+                </div>
                 <Button
                   type="submit"
-                  size="lg"
-                  className="h-14 px-8 text-lg"
                   disabled={!teamId.trim()}
+                  className="h-16 w-full rounded-[2rem] text-xl font-black shadow-2xl shadow-indigo-600/40 group/btn sm:h-20 sm:text-2xl"
                 >
-                  Join Quiz
+                  Enter arena
+                  <ArrowRight className="ml-2 h-6 w-6 transition-transform group-hover/btn:translate-x-1" />
                 </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Don't have a team ID? Ask your moderator for the quiz link or
-                team ID.
-              </p>
-            </form>
+                <p className="text-center text-sm text-zinc-500">
+                  No account needed—your host shares the link or ID.
+                </p>
+              </form>
+            </div>
           </div>
         </div>
 
-        {/* How It Works */}
-        <div className="mt-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-12">
-            How It Works
+        <section className="mt-32 md:mt-48">
+          <div className="grid gap-8 md:grid-cols-3">
+            <FeatureCard
+              icon={<Users className="h-8 w-8" />}
+              title="Live participation"
+              desc="Participants join with a link or team ID. The moderator drives the pace."
+              color="indigo"
+            />
+            <FeatureCard
+              icon={<BarChart3 className="h-8 w-8" />}
+              title="Leaderboard"
+              desc="Rankings update as answers come in—perfect for competitive sessions."
+              color="purple"
+            />
+            <FeatureCard
+              icon={<Timer className="h-8 w-8" />}
+              title="Timer mode"
+              desc="Optional auto-advance per question when you want the clock to add pressure."
+              color="pink"
+            />
+            <FeatureCard
+              icon={<CheckCircle2 className="h-8 w-8" />}
+              title="Instant results"
+              desc="Unlock the scoreboard when you are ready; players see how they did."
+              color="indigo"
+            />
+            <FeatureCard
+              icon={<Share2 className="h-8 w-8" />}
+              title="Easy sharing"
+              desc="One quiz link per session—copy and share with your group in seconds."
+              color="purple"
+            />
+            <FeatureCard
+              icon={<Trophy className="h-8 w-8" />}
+              title="Your questions"
+              desc="Upload JSON or use the built-in builder to craft your own quiz content."
+              color="pink"
+            />
+          </div>
+        </section>
+
+        <div className="mt-24 text-center md:mt-32">
+          <h2 className="mb-10 font-display text-3xl font-black uppercase italic tracking-tighter text-foreground md:text-4xl">
+            How it works
           </h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                  1
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2">
-                    Moderator Creates Quiz
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Register as a moderator, upload questions (or use
-                    defaults), and get your unique quiz link.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                  2
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2">
-                    Share with Participants
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Share your quiz link or team ID. Participants join with just
-                    their email - no passwords needed.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                  3
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2">
-                    Run the Quiz
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Start the quiz, control the pace, or use timer mode.
-                    Participants answer in real-time.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                  4
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2">
-                    View Results
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Show results when ready. Participants see scores, grades,
-                    and detailed answer reviews instantly.
-                  </p>
-                </div>
-              </div>
-            </div>
+          <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2 md:gap-10">
+            <Step
+              n={1}
+              title="Moderator sets up"
+              body="Sign in, add questions, and grab your shareable quiz link."
+            />
+            <Step
+              n={2}
+              title="Players join"
+              body="They open the link or enter the team ID and sign in with name and email."
+            />
+            <Step
+              n={3}
+              title="Run the quiz"
+              body="Start, pause, advance, or use timer mode—full control from the console."
+            />
+            <Step
+              n={4}
+              title="Show results"
+              body="Reveal scores when you are ready; everyone sees their breakdown."
+            />
           </div>
         </div>
+      </main>
+    </div>
+  );
+}
+
+function StatItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+        {label}
+      </p>
+      <p className="text-xl font-black text-white sm:text-2xl">{value}</p>
+    </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  desc,
+  color,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  color: "indigo" | "purple" | "pink";
+}) {
+  const colors: Record<string, string> = {
+    indigo: "border-indigo-500/20 bg-indigo-500/10 text-indigo-400",
+    purple: "border-purple-500/20 bg-purple-500/10 text-purple-400",
+    pink: "border-pink-500/20 bg-pink-500/10 text-pink-400",
+  };
+
+  return (
+    <div className="glass-card rounded-[2rem] p-8 transition-transform duration-300 hover:-translate-y-2 md:p-10">
+      <div
+        className={`mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border ${colors[color]}`}
+      >
+        {icon}
+      </div>
+      <h3 className="mb-3 text-xl font-black uppercase italic tracking-tighter">
+        {title}
+      </h3>
+      <p className="font-medium leading-relaxed text-zinc-400">{desc}</p>
+    </div>
+  );
+}
+
+function Step({
+  n,
+  title,
+  body,
+}: {
+  n: number;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex gap-4 text-left">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-600/30">
+        {n}
+      </div>
+      <div>
+        <h3 className="mb-1 font-black text-foreground">{title}</h3>
+        <p className="text-sm font-medium text-zinc-400">{body}</p>
       </div>
     </div>
   );

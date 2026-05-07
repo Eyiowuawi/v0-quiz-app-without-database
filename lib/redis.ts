@@ -15,6 +15,8 @@ export const KEYS = {
     `quiz:session:${teamId}:${email}`,
   USER_ANSWER: (teamId: string, email: string, questionIndex: number) =>
     `quiz:answer:${teamId}:${email}:${questionIndex}`,
+  /** Set when a moderator registers this teamId — blocks random /quiz/{id} sessions. */
+  TEAM_REGISTERED: (teamId: string) => `quiz:team_reg:${teamId}`,
   // Moderator keys
   MODERATOR: (email: string) => `moderator:${email}`,
   MODERATOR_SESSION: (sessionId: string) => `moderator:session:${sessionId}`,

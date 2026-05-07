@@ -206,17 +206,17 @@ export function AdminDashboard() {
   // Login form
   if (!sessionId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
         <div className="w-full max-w-md">
-          <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-destructive" />
+          <div className="glass-card rounded-[2rem] border border-white/10 p-8 sm:p-10">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15">
+                <Shield className="h-8 w-8 text-red-400" />
               </div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Admin Dashboard
+              <h1 className="mb-2 font-display text-3xl font-black uppercase italic tracking-tighter text-foreground">
+                Admin
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm font-medium text-zinc-400">
                 Enter admin key to access system overview
               </p>
             </div>
@@ -241,13 +241,13 @@ export function AdminDashboard() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
+            <div className="mt-6 border-t border-white/5 pt-6">
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-2xl font-bold"
                 onClick={() => (window.location.href = "/")}
               >
-                Back to Home
+                Back to home
               </Button>
             </div>
           </div>
@@ -257,12 +257,14 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Shield className="w-6 h-6 text-destructive" />
-            <h1 className="text-xl font-bold text-foreground">Admin Dashboard</h1>
+    <div className="min-h-screen bg-background bg-grid">
+      <header className="sticky top-0 z-10 border-b border-white/5 bg-zinc-950/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Shield className="h-6 w-6 text-red-400" />
+            <h1 className="font-display text-xl font-black uppercase tracking-tighter text-foreground">
+              Admin console
+            </h1>
           </div>
           <div className="flex items-center gap-4">
             <Button
@@ -286,11 +288,11 @@ export function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Summary Cards */}
         {data && (
-          <div className="grid md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-card border border-border rounded-xl p-6">
+          <div className="mb-6 grid gap-4 md:grid-cols-4">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Users className="w-5 h-5 text-primary" />
                 <h3 className="text-sm font-medium text-muted-foreground">
@@ -302,9 +304,9 @@ export function AdminDashboard() {
               </p>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-2">
-                <Users className="w-5 h-5 text-blue-500" />
+                <Users className="w-5 h-5 text-indigo-400" />
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Total Participants
                 </h3>
@@ -314,9 +316,9 @@ export function AdminDashboard() {
               </p>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-2">
-                <BarChart3 className="w-5 h-5 text-green-500" />
+                <BarChart3 className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Total Answers
                 </h3>
@@ -326,9 +328,9 @@ export function AdminDashboard() {
               </p>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-2">
-                <Activity className="w-5 h-5 text-orange-500" />
+                <Activity className="w-5 h-5 text-amber-400" />
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Active Quizzes
                 </h3>
@@ -383,7 +385,7 @@ export function AdminDashboard() {
               <p className="text-muted-foreground mt-4">Loading data...</p>
             </div>
           ) : !data || data.teams.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
+            <div className="glass-card rounded-2xl py-12 text-center">
               <Database className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No teams found</p>
             </div>
@@ -392,7 +394,7 @@ export function AdminDashboard() {
               {data.teams.map((team) => (
                 <div
                   key={team.teamId}
-                  className="bg-card border border-border rounded-xl p-6"
+                  className="glass-card rounded-2xl p-6"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">

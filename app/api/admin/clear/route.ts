@@ -79,6 +79,9 @@ async function clearTeamData(teamId: string) {
   // Clear quiz state
   await redis.del(KEYS.QUIZ_STATE(teamId));
 
+  // Clear team registration marker
+  await redis.del(KEYS.TEAM_REGISTERED(teamId));
+
   // Clear main answers array
   await redis.del(KEYS.ANSWERS(teamId));
 

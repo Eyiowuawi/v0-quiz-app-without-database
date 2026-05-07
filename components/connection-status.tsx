@@ -26,9 +26,9 @@ export function ConnectionStatus() {
   if (isOnline) return null
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white text-center py-2 px-4">
-      <p className="text-sm font-medium">
-        ⚠️ You're offline. Please check your internet connection.
+    <div className="fixed left-0 right-0 top-0 z-[60] border-b border-red-500/30 bg-red-950/95 px-4 py-2.5 text-center text-red-100 shadow-lg backdrop-blur-md">
+      <p className="text-sm font-semibold">
+        You’re offline — check your connection and try again.
       </p>
     </div>
   )

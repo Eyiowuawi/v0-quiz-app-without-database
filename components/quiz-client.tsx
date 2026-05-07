@@ -13,6 +13,7 @@ import { QuestionCard } from "./question-card";
 import { WaitingScreen } from "./waiting-screen";
 import { Scorecard } from "./scorecard";
 import { StudentPlayShell } from "./student-play-shell";
+import { fetchQuizState, UnknownTeamError } from "@/lib/quiz-state-fetch";
 
 interface QuizState {
   currentQuestionIndex: number;
@@ -71,12 +72,16 @@ export function QuizClient({ teamId }: QuizClientProps) {
       .catch(() => {});
   }, [email, effectiveTeamId, participantName]);
 
-  const { data: quizData } = useSWR(
-    email && effectiveTeamId
-      ? `/api/quiz/state?teamId=${effectiveTeamId}`
+  const {
+    data: quizData,
+    error: quizStateError,
+    mutate: mutateQuizState,
+  } = useSWR(
+    effectiveTeamId
+      ? `/api/quiz/state?teamId=${encodeURIComponent(effectiveTeamId)}`
       : null,
-    fetcher,
-    { refreshInterval: 2000 },
+    fetchQuizState,
+    { refreshInterval: email ? 2000 : 0 },
   );
 
   const { data: answersData, mutate: mutateAnswers } = useSWR(
@@ -98,24 +103,31 @@ export function QuizClient({ teamId }: QuizClientProps) {
   }, [answersData]);
 
   useEffect(() => {
-    const state = quizData?.state as QuizState | null;
+    const st = quizData?.state as QuizState | null;
     if (
-      state?.timerMode &&
-      state?.questionStartTime &&
-      state?.timerDuration &&
-      state.isActive
+      !st?.timerMode ||
+      st.questionStartTime == null ||
+      !st.timerDuration ||
+      !st.isActive
     ) {
-      const interval = setInterval(() => {
-        const elapsed = Math.floor(
-          (Date.now() - state.questionStartTime!) / 1000,
-        );
-        const remaining = Math.max(0, state.timerDuration! - elapsed);
-        setTimeRemaining(remaining);
-      }, 1000);
-      return () => clearInterval(interval);
+      setTimeRemaining(null);
+      return;
     }
-    setTimeRemaining(null);
-  }, [quizData?.state]);
+    const start = st.questionStartTime;
+    const duration = st.timerDuration;
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setTimeRemaining(Math.max(0, duration - elapsed));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [
+    quizData?.state?.timerMode,
+    quizData?.state?.questionStartTime,
+    quizData?.state?.timerDuration,
+    quizData?.state?.isActive,
+  ]);
 
   const handleLogin = (userEmail: string, name: string) => {
     setEmail(userEmail);
@@ -155,18 +167,46 @@ export function QuizClient({ teamId }: QuizClientProps) {
 
   if (!effectiveTeamId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
         <div className="w-full max-w-md">
-          <div className="bg-card border-2 border-border rounded-3xl p-8 shadow-xl shadow-chart-2/12 text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-4">
-              Team ID Required
+          <div className="glass-card rounded-[2rem] border border-white/10 p-8 text-center sm:p-10">
+            <h1 className="mb-4 font-display text-2xl font-black uppercase italic tracking-tighter text-foreground">
+              Team ID required
             </h1>
-            <p className="text-muted-foreground mb-6">
+            <p className="mb-6 text-sm font-medium text-zinc-400">
               Please enter a team ID or use the quiz link provided by your
               moderator.
             </p>
-            <Button onClick={() => (window.location.href = "/")}>
-              Go to Home
+            <Button
+              className="rounded-2xl font-black"
+              onClick={() => (window.location.href = "/")}
+            >
+              Go to home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (quizStateError instanceof UnknownTeamError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background bg-grid p-4">
+        <div className="w-full max-w-md">
+          <div className="glass-card rounded-[2rem] border border-destructive/25 p-8 text-center sm:p-10">
+            <h1 className="mb-4 font-display text-2xl font-black uppercase italic tracking-tighter text-foreground">
+              Quiz link isn&apos;t valid
+            </h1>
+            <p className="mb-6 text-sm font-medium text-zinc-400">
+              This team ID doesn&apos;t match an active host room. Double-check
+              the link or ask your host to open their moderator console once,
+              then resend the link.
+            </p>
+            <Button
+              className="rounded-2xl font-black"
+              onClick={() => (window.location.href = "/")}
+            >
+              Go to home
             </Button>
           </div>
         </div>
@@ -176,6 +216,29 @@ export function QuizClient({ teamId }: QuizClientProps) {
 
   if (!email) {
     return <LoginForm onLogin={handleLogin} teamId={effectiveTeamId} />;
+  }
+
+  if (quizStateError && !(quizStateError instanceof UnknownTeamError)) {
+    return (
+      <StudentPlayShell
+        teamId={effectiveTeamId}
+        email={email}
+        participantDisplayName={displayName}
+        onLeave={handleLogout}
+      >
+        <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center gap-4 px-4 text-center">
+          <p className="max-w-md text-sm font-medium text-zinc-400">
+            {quizStateError.message || "Could not load the quiz. Check your connection."}
+          </p>
+          <Button
+            className="rounded-2xl font-black"
+            onClick={() => void mutateQuizState()}
+          >
+            Retry
+          </Button>
+        </div>
+      </StudentPlayShell>
+    );
   }
 
   const state: QuizState | null = quizData?.state;
@@ -239,7 +302,9 @@ export function QuizClient({ teamId }: QuizClientProps) {
           onAnswer={(selectedOption) =>
             handleAnswer(state.currentQuestionIndex, selectedOption)
           }
-          timeRemaining={timeRemaining}
+          timeRemaining={
+            state.timerMode ? timeRemaining : null
+          }
           teamId={effectiveTeamId}
         />
       </div>,

@@ -1,24 +1,30 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Nunito, Geist_Mono } from "next/font/google";
+import { Inter, Outfit, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { ConnectionStatus } from "@/components/connection-status";
 import "./globals.css";
 
-const nunito = Nunito({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-nunito",
+  variable: "--font-inter",
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
 });
 
 export const metadata: Metadata = {
-  title: "Quiz Runner - Live Quiz App",
+  title: "QuizPulse — Live Quiz",
   description:
     "Real-time quiz application with moderator controls and instant scoring",
   generator: "v0.app",
@@ -47,8 +53,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${nunito.variable} ${geistMono.variable}`}>
-      <body className="font-sans antialiased">
+    <html
+      lang="en"
+      className={`dark ${inter.variable} ${outfit.variable} ${jetbrainsMono.variable}`}
+    >
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/30">
         <ConnectionStatus />
         {children}
         <Toaster position="top-center" richColors />

@@ -23,25 +23,24 @@ export function StudentPlayShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen pt-[56px]">
-      <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-stretch gap-1 border-b-4 border-chart-2/40 bg-linear-to-r from-card via-accent/30 to-card px-2 shadow-md backdrop-blur-md sm:gap-2 sm:px-4">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="relative flex h-3 w-3 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-35" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-success shadow-[0_0_8px_oklch(0.55_0.17_155/0.8)]" />
-          </span>
+    <div className="min-h-screen bg-background bg-grid pt-14">
+      <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-stretch gap-2 border-b border-white/5 bg-zinc-950/80 px-3 shadow-lg shadow-black/20 backdrop-blur-xl sm:gap-3 sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black italic text-white shadow-md shadow-indigo-600/30">
+            Q
+          </div>
           <div className="min-w-0 leading-tight">
-            <p className="font-black text-[9px] uppercase tracking-[0.2em] text-chart-2 sm:text-[10px]">
-              Live game
+            <p className="font-display text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
+              Live
             </p>
-            <p className="truncate text-[10px] font-bold text-muted-foreground sm:text-xs">
-              Quiz Runner
+            <p className="truncate text-[10px] font-bold text-zinc-500 sm:text-xs">
+              QuizPulse
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border-2 border-primary/35 bg-card px-2 py-1 shadow-inner sm:px-4">
-          <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">
+        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 sm:px-3">
+          <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">
             Room
           </span>
           <span className="font-mono text-xs font-black tracking-widest text-foreground sm:text-sm">
@@ -49,7 +48,7 @@ export function StudentPlayShell({
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-2.5">
           <div
             className="hidden min-w-0 flex-col items-end text-right sm:flex"
             title={email}
@@ -57,7 +56,7 @@ export function StudentPlayShell({
             <span className="max-w-[140px] truncate text-xs font-black text-foreground md:max-w-[180px]">
               {participantDisplayName}
             </span>
-            <span className="max-w-[140px] truncate text-[10px] font-semibold text-muted-foreground md:max-w-[180px]">
+            <span className="max-w-[140px] truncate text-[10px] font-semibold text-zinc-500 md:max-w-[180px]">
               {email}
             </span>
           </div>
@@ -70,7 +69,7 @@ export function StudentPlayShell({
           <button
             type="button"
             onClick={onLeave}
-            className="shrink-0 rounded-xl border-2 border-border bg-secondary px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-secondary-foreground shadow-sm transition-transform active:scale-95 hover:border-primary/45 hover:brightness-105 sm:px-3"
+            className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-zinc-300 transition-transform hover:bg-white/10 active:scale-95 sm:px-3"
           >
             Exit
           </button>
